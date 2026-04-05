@@ -1,0 +1,17 @@
+services:
+  threads_publisher:
+    build: .
+    container_name: threads_publisher
+    restart: always
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  threads_generator:
+    build: .
+    container_name: threads_generator
+    profiles: ["tools"] # Запускается только вручную
+    volumes:
+      - .:/app
+    entrypoint: ["python", "generate_posts.py"]
