@@ -3,15 +3,37 @@ services:
     build: .
     container_name: threads_publisher
     restart: always
-    volumes:
-      - .:/app
+    env_file: .env
     environment:
       - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+      - threads_data:/app/data
 
   threads_generator:
     build: .
     container_name: threads_generator
-    profiles: ["tools"] # Запускается только вручную
+    profiles: ["tools"]
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
     volumes:
       - .:/app
+      - threads_data:/app/data
     entrypoint: ["python", "generate_posts.py"]
+    # Usage: docker-compose --profile tools run --rm threads_generator --account event_parsing
+
+  threads_refresher:
+    build: .
+    container_name: threads_refresher
+    profiles: ["tools"]
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+    entrypoint: ["python", "refresh_tokens.py"]
+    # Usage: docker-compose --profile tools run --rm threads_refresher
+
+volumes:
+  threads_data:
