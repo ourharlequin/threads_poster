@@ -1,5 +1,6 @@
 """
-Планировщик для автоматизации двух задач:
+Планировщик для автоматизации трёх задач:
+- Сбор метрик:    каждый день в 05:00 по Белграду
 - Генерация постов: каждый день в 08:00 по Белграду (последовательно по аккаунтам)
 - Обновление токенов: каждые 58 дней в 08:00 по Белграду
 """
@@ -16,6 +17,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+INSIGHTS_AT = "05:00"
 RUN_AT = "08:00"
 REFRESH_EVERY_DAYS = 58
 POSTS_PER_ACCOUNT = int(os.getenv("SCHEDULER_POSTS_COUNT", "30"))
@@ -76,6 +78,18 @@ def generate_all():
     log.info("Генерация завершена для всех аккаунтов")
 
 
+def fetch_insights():
+    log.info("Собираю метрики из Threads Insights API...")
+    result = subprocess.run(
+        [sys.executable, "fetch_insights.py"],
+        capture_output=False,
+    )
+    if result.returncode != 0:
+        log.error(f"❌ Ошибка сбора метрик (код {result.returncode})")
+    else:
+        log.info("✅ Метрики собраны")
+
+
 def refresh_tokens():
     log.info("Обновляю Threads-токены...")
     result = subprocess.run(
@@ -91,7 +105,8 @@ def refresh_tokens():
 def main():
     accounts = load_account_ids()
     log.info(f"Планировщик запущен. Аккаунты: {accounts}")
-    log.info(f"Генерация — каждый день в {RUN_AT} по Белграду")
+    log.info(f"Сбор метрик    — каждый день в {INSIGHTS_AT} по Белграду")
+    log.info(f"Генерация      — каждый день в {RUN_AT} по Белграду")
     log.info(f"Обновление токенов — каждые {REFRESH_EVERY_DAYS} дней")
 
     # Если сегодня генерация ещё не запускалась — запустить сразу
@@ -99,6 +114,7 @@ def main():
         log.info("Пропущенный запуск обнаружен — запускаю генерацию сейчас")
         generate_all()
 
+    schedule.every().day.at(INSIGHTS_AT).do(fetch_insights)
     schedule.every().day.at(RUN_AT).do(generate_all)
     schedule.every(REFRESH_EVERY_DAYS).days.at(RUN_AT).do(refresh_tokens)
 

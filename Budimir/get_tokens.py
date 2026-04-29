@@ -32,7 +32,13 @@ load_dotenv()
 APP_ID = os.getenv("META_APP_ID")
 APP_SECRET = os.getenv("META_APP_SECRET")
 REDIRECT_URI = "https://localhost/callback"
-SCOPES = "threads_basic,threads_content_publish"
+SCOPES = (
+    "threads_basic,threads_content_publish,threads_delete,"
+    "threads_keyword_search,threads_location_tagging,"
+    "threads_manage_insights,threads_manage_mentions,"
+    "threads_manage_replies,threads_profile_discovery,"
+    "threads_read_replies,threads_share_to_instagram"
+)
 
 AUTH_URL = "https://threads.net/oauth/authorize"
 TOKEN_URL = "https://graph.threads.net/oauth/access_token"
