@@ -83,9 +83,9 @@ publisher.py (6 потоков, окно 9:00–21:00 Белград, интер
 - [x] Генерация протестирована (30 постов × 6 аккаунтов)
 - [x] Публикация протестирована на всех 6 аккаунтах
 - [x] PR #3 создан и запушен
-- [ ] Запустить publisher.py в продакшн (Docker или напрямую)
-- [ ] Настроить автозапуск (systemd / Task Scheduler / docker restart: always)
-- [ ] Обновить токены через `refresh_tokens.py` через ~55 дней
+- [x] Запустить publisher.py в продакшн (Docker или напрямую)
+- [x] Настроить автозапуск (systemd / Task Scheduler / docker restart: always)
+- [x] Обновить токены через `refresh_tokens.py` через ~55 дней
 
 ---
 
