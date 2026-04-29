@@ -27,6 +27,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DB_PATH = os.getenv("DB_PATH", "data/data.duckdb")
+DB_LOCK = threading.Lock()
 
 TIMEZONE = ZoneInfo("Europe/Belgrade")
 START_HOUR = 9
@@ -109,7 +110,7 @@ def load_accounts() -> list[dict]:
 # ── DuckDB операции (короткие соединения) ────────────────────────────────────
 def get_next_pending_post(account_id: str) -> dict | None:
     """Берёт самый старый pending пост для аккаунта."""
-    with duckdb.connect(DB_PATH) as conn:
+    with DB_LOCK, duckdb.connect(DB_PATH) as conn:
         row = conn.execute(
             """
             SELECT id, content
@@ -128,7 +129,7 @@ def get_next_pending_post(account_id: str) -> dict | None:
 
 def update_post_status(post_id: int, status: str, threads_post_id: str | None = None):
     """Обновляет статус поста после публикации."""
-    with duckdb.connect(DB_PATH) as conn:
+    with DB_LOCK, duckdb.connect(DB_PATH) as conn:
         if status == "posted":
             conn.execute(
                 """

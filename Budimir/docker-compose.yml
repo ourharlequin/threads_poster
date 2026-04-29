@@ -10,6 +10,19 @@ services:
       - .:/app
       - threads_data:/app/data
 
+  threads_scheduler:
+    build: .
+    container_name: threads_scheduler
+    restart: always
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Europe/Belgrade
+    volumes:
+      - .:/app
+      - threads_data:/app/data
+    entrypoint: ["python", "scheduler.py"]
+
   threads_generator:
     build: .
     container_name: threads_generator
