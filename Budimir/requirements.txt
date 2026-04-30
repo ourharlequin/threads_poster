@@ -1,5 +1,5 @@
 requests
 python-dotenv
 duckdb
-groq
+cerebras-cloud-sdk
 schedule

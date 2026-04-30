@@ -1,5 +1,5 @@
 """
-Генератор постов для Threads через Groq API.
+Генератор постов для Threads через Cerebras API.
 Использование: python generate_posts.py --account event_parsing
 """
 
@@ -12,7 +12,7 @@ import time
 from datetime import datetime, timezone
 
 import duckdb
-from groq import Groq
+from cerebras.cloud.sdk import Cerebras
 from dotenv import load_dotenv
 
 from prompts import get_account_config
@@ -20,11 +20,11 @@ from prompts import get_account_config
 load_dotenv()
 
 DB_PATH        = os.getenv("DB_PATH", "data/data.duckdb")
-MODEL          = "llama-3.3-70b-versatile"
+MODEL          = "llama3.1-8b"
 POSTS_COUNT    = 30
-REQUEST_DELAY  = 3.0   # секунды между запросами (~20 req/min, лимит Groq ~30)
+REQUEST_DELAY  = 3.0   # секунды между запросами
 MAX_RETRIES    = 3
-RETRY_DELAY    = 10.0  # пауза после 429
+RETRY_DELAY    = 15.0  # пауза после 429
 
 logging.basicConfig(
     level=logging.INFO,
@@ -50,16 +50,7 @@ def init_db():
         """)
 
 
-def get_groq_token(account_id: str) -> str | None:
-    """Ищет ACCOUNT_N_GROQ_TOKEN для заданного account_id."""
-    for i in range(1, 100):
-        env_id = os.getenv(f"ACCOUNT_{i}_ID")
-        if env_id == account_id:
-            return os.getenv(f"ACCOUNT_{i}_GROQ_TOKEN")
-    return None
-
-
-def generate_post(client: Groq, fmt_name: str, fmt_prompt: str, system_prompt: str) -> str | None:
+def generate_post(client: Cerebras, fmt_name: str, fmt_prompt: str, system_prompt: str) -> str | None:
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             resp = client.chat.completions.create(
@@ -68,17 +59,17 @@ def generate_post(client: Groq, fmt_name: str, fmt_prompt: str, system_prompt: s
                     {"role": "system", "content": system_prompt},
                     {"role": "user",   "content": fmt_prompt},
                 ],
-                max_tokens=200,
+                max_completion_tokens=200,
                 temperature=0.9,
             )
             return resp.choices[0].message.content.strip()
         except Exception as e:
             err = str(e)
-            if "rate_limit" in err.lower() or "429" in err:
+            if "rate_limit" in err.lower() or "429" in err or "too many requests" in err.lower():
                 log.warning(f"Rate limit ({fmt_name}), попытка {attempt}/{MAX_RETRIES}. Жду {RETRY_DELAY}с...")
                 time.sleep(RETRY_DELAY * attempt)
             else:
-                log.error(f"Groq error ({fmt_name}): {e}")
+                log.error(f"Cerebras error ({fmt_name}): {e}")
                 return None
     log.error(f"Не удалось сгенерировать пост ({fmt_name}) после {MAX_RETRIES} попыток")
     return None
@@ -86,7 +77,7 @@ def generate_post(client: Groq, fmt_name: str, fmt_prompt: str, system_prompt: s
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Генерирует посты через Groq и записывает в DuckDB"
+        description="Генерирует посты через Cerebras и записывает в DuckDB"
     )
     parser.add_argument("--account", required=True,
                         help="account_id (например: event_parsing, aire.porteno)")
@@ -98,9 +89,9 @@ def main():
 
     init_db()
 
-    groq_token = get_groq_token(account_id)
-    if not groq_token:
-        log.error(f"ACCOUNT_N_GROQ_TOKEN не найден для аккаунта '{account_id}'")
+    cerebras_key = os.getenv("CEREBRAS_API_KEY")
+    if not cerebras_key:
+        log.error("CEREBRAS_API_KEY не найден в .env")
         sys.exit(1)
 
     try:
@@ -112,7 +103,7 @@ def main():
     system_prompt = config["system"]
     formats       = config["formats"]
 
-    client    = Groq(api_key=groq_token)
+    client    = Cerebras(api_key=cerebras_key)
     fmt_names = list(formats.keys())
     generated = 0
     failed    = 0
