@@ -1,0 +1,7 @@
+FROM python:3.11-slim
+RUN pip install --no-cache-dir "duckdb==1.2.1" "schedule==1.2.2"
+RUN useradd -u 1000 -m appuser
+ENV TZ=Europe/Belgrade
+COPY merger.py /app/merger.py
+USER appuser
+CMD ["python", "/app/merger.py"]
