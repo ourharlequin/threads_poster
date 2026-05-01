@@ -67,6 +67,77 @@ fetch_insights.py (05:00 Белград) → post_insights + account_insights
 
 ---
 
+## Superset (аналитика)
+
+### Архитектура
+
+```
+Budimir/data/data.duckdb ─┐
+Slava/data/data.duckdb   ─┼─ merger.py (07:45 Белград) ──→ data/analytics.duckdb ──→ Superset :8088
+Tanya/data/data.duckdb   ─┘
+```
+
+- **merger** — слияние трёх БД в одну, добавляет колонку `participant` (budimir / slava / tanya)
+- **Superset** — Apache Superset 4.1.1 с DuckDB-коннектором (`duckdb-engine`)
+- DuckDB открывается в `read_only=True` (через `connect_args`) — 4 gunicorn-воркера читают одновременно без конфликтов
+- При слиянии (≈1–2 с) Superset временно недоступен — незаметно
+
+### Запуск
+
+```bash
+# Из корня проекта (не из Budimir/)
+docker compose up -d
+```
+
+Superset: **http://localhost:8088** — логин `admin` / `admin`  
+Dashboard: http://localhost:8088/superset/dashboard/1/
+
+### Чарты на дашборде
+
+| Чарт | Тип | Датасет |
+|---|---|---|
+| Просмотры по аккаунтам | Line | account_insights |
+| Рост фолловеров | Line | account_insights |
+| Вовлечённость по аккаунтам | Bar | account_insights |
+| Постов опубликовано по дням | Bar | posts |
+| Топ постов по просмотрам | Table | post_insights |
+| Статус постов | Pie | posts |
+
+### Схема analytics.duckdb
+
+Те же три таблицы что в participant-БД + колонка `participant`:
+- `account_insights` — дневные метрики аккаунтов всех участников
+- `posts` — все посты (pending / posted / failed)
+- `post_insights` — снапшоты метрик постов
+
+### Ключевые файлы
+
+```
+superset/
+├── Dockerfile           — образ Superset с duckdb-engine
+├── Dockerfile.merger    — лёгкий Python образ для merger (uid=1000)
+├── merger.py            — слияние БД, запуск в 07:45 по Белграду + при старте
+├── setup_db.py          — регистрирует analytics.duckdb в Superset при первом запуске
+├── create_charts.py     — создаёт 6 чартов и дашборд через REST API (запускать вручную)
+├── superset_config.py   — Redis-кэш, SQLite для метаданных Superset
+└── docker-init.sh       — entrypoint: init при первом старте → gunicorn
+data/
+└── analytics.duckdb     — объединённая БД (создаётся merger'ом)
+```
+
+### Переменные окружения (корневой .env или через docker-compose)
+
+- `SUPERSET_SECRET_KEY` — случайный hex-ключ (в `Budimir/.env`)
+- `SUPERSET_ADMIN_USER` / `SUPERSET_ADMIN_PASSWORD` / `SUPERSET_ADMIN_EMAIL` — дефолты: admin/admin
+
+### Решённые проблемы
+
+- `?read_only=true` в URI не работает с duckdb-engine 0.13.4 → использовать `connect_args: {read_only: true}` в `extra`
+- Файл `analytics.duckdb` создавался от root → merger теперь запускается от uid=1000 (совпадает с superset-пользователем)
+- Чарты создаются через API, но `slices` не линкуются автоматически → привязывать через ORM (`dash.slices = charts`)
+
+---
+
 ## Найденные и исправленные проблемы
 
 - [x] `groq` отсутствовал в `requirements.txt`
@@ -110,6 +181,8 @@ fetch_insights.py (05:00 Белград) → post_insights + account_insights
 - [x] Автозапуск настроен
 - [x] Сбор метрик работает (05:00 ежедневно)
 - [x] PR #3 и PR #5 запушены
+- [x] Superset поднят, дашборд с 6 чартами работает
+- [x] Merger сливает данные всех участников в analytics.duckdb (07:45 Белград)
 
 ---
 
@@ -131,9 +204,28 @@ python publisher.py
 # Обновление токенов (раз в месяц, или через scheduler автоматически)
 python refresh_tokens.py
 
-# Docker
-docker-compose up -d publisher
-docker-compose up -d scheduler
-docker-compose --profile tools run --rm threads_generator --account event_parsing
-docker-compose --profile tools run --rm threads_refresher
+# Docker — publisher/scheduler (из Budimir/)
+cd Budimir
+docker-compose up -d
+
+# Docker — аналитика Superset (из корня проекта)
+cd ..  # корень threads_poster
+docker compose up -d
+docker compose logs merger       # проверить слияние
+docker compose logs superset     # проверить Superset
+
+# Пересоздать чарты и дашборд
+python superset/create_charts.py
+
+# Привязать чарты к дашборду вручную (если слетели)
+docker compose exec superset bash -c "python -c \"
+from superset import create_app; app = create_app()
+with app.app_context():
+    from superset.extensions import db
+    from superset.models.dashboard import Dashboard
+    from superset.models.slice import Slice
+    dash = db.session.query(Dashboard).filter_by(id=1).first()
+    dash.slices = db.session.query(Slice).all()
+    db.session.commit()
+\""
 ```
