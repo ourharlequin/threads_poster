@@ -1,18 +1,17 @@
 services:
   threads_publisher:
     build: .
-    container_name: threads_publisher
+    container_name: tanya_publisher
     restart: always
     env_file: .env
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
       - .:/app
-      - threads_data:/app/data
-
+      - tanya_data:/app/data
   threads_scheduler:
     build: .
-    container_name: threads_scheduler
+    container_name: tanya_scheduler
     restart: always
     env_file: .env
     environment:
@@ -20,25 +19,23 @@ services:
       - TZ=Europe/Belgrade
     volumes:
       - .:/app
-      - threads_data:/app/data
+      - tanya_data:/app/data
     entrypoint: ["python", "scheduler.py"]
-
   threads_generator:
     build: .
-    container_name: threads_generator
+    container_name: tanya_generator
     profiles: ["tools"]
     env_file: .env
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
       - .:/app
-      - threads_data:/app/data
+      - tanya_data:/app/data
     entrypoint: ["python", "generate_posts.py"]
     # Usage: docker-compose --profile tools run --rm threads_generator --account event_parsing
-
   threads_refresher:
     build: .
-    container_name: threads_refresher
+    container_name: tanya_refresher
     profiles: ["tools"]
     env_file: .env
     environment:
@@ -47,6 +44,5 @@ services:
       - .:/app
     entrypoint: ["python", "refresh_tokens.py"]
     # Usage: docker-compose --profile tools run --rm threads_refresher
-
 volumes:
-  threads_data:
+  tanya_data:
