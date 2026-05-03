@@ -1,0 +1,32 @@
+name: Deploy to VPS
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # 03:00 UTC = 06:00 Belgrade
+  workflow_dispatch:       # ручной запуск из GitHub Actions
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /root/threads_poster
+            git pull
+
+            cd /root/threads_poster/Budimir
+            docker compose up -d --build threads_publisher threads_scheduler
+
+            cd /root/threads_poster/Slava
+            docker compose up -d --build threads_publisher threads_scheduler
+
+            cd /root/threads_poster/Tanya
+            docker compose up -d --build threads_publisher threads_scheduler
+
+            cd /root/threads_poster
+            docker compose up -d --build merger superset superset_redis
