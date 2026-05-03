@@ -2,7 +2,7 @@ name: Deploy to VPS
 
 on:
   schedule:
-    - cron: '0 3 * * *'  # 03:00 UTC = 06:00 Belgrade
+    - cron: '0 22 * * *'  # 22:00 UTC = 00:00 Belgrade (CEST, UTC+2)
   workflow_dispatch:       # ручной запуск из GitHub Actions
 
 jobs:
