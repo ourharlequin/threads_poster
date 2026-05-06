@@ -64,15 +64,38 @@ def account_stats(
 ):
     rows = query_analytics(
         f"""
-        SELECT SUM(views), SUM(likes), SUM(replies), SUM(reposts), SUM(quotes),
-               MAX(followers_count), COUNT(*)
-        FROM account_insights
-        WHERE account_id = ?
-          AND date >= (CURRENT_DATE - INTERVAL '{days}' DAY)
+        WITH account AS (
+            SELECT COALESCE(SUM(views), 0) AS views,
+                   MAX(followers_count)    AS followers_count,
+                   COUNT(*)                AS days_with_data
+            FROM account_insights
+            WHERE account_id = ?
+              AND date >= (CURRENT_DATE - INTERVAL '{days}' DAY)
+        ),
+        post_engagement AS (
+            SELECT COALESCE(SUM(best.likes),   0) AS likes,
+                   COALESCE(SUM(best.replies), 0) AS replies,
+                   COALESCE(SUM(best.reposts), 0) AS reposts,
+                   COALESCE(SUM(best.quotes),  0) AS quotes
+            FROM (
+                SELECT MAX(pi.likes)   AS likes,
+                       MAX(pi.replies) AS replies,
+                       MAX(pi.reposts) AS reposts,
+                       MAX(pi.quotes)  AS quotes
+                FROM posts p
+                JOIN post_insights pi ON pi.post_id = p.id AND pi.participant = p.participant
+                WHERE p.account_id = ?
+                  AND p.posted_at >= (CURRENT_TIMESTAMP - INTERVAL '{days}' DAY)
+                GROUP BY p.id
+            ) best
+        )
+        SELECT a.views, pe.likes, pe.replies, pe.reposts, pe.quotes,
+               a.followers_count, a.days_with_data
+        FROM account a, post_engagement pe
         """,
-        [account_id],
+        [account_id, account_id],
     )
-    if not rows or rows[0][0] is None:
+    if not rows or rows[0][6] == 0:
         raise HTTPException(404, f"No data for account '{account_id}'")
     r = rows[0]
     keys = ("views", "likes", "replies", "reposts", "quotes", "followers_count", "days_with_data")

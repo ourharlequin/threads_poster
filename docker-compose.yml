@@ -29,6 +29,7 @@ services:
       dockerfile: Dockerfile.merger
     container_name: threads_merger
     restart: always
+    user: "0"
     environment:
       - TZ=Europe/Belgrade
     volumes:

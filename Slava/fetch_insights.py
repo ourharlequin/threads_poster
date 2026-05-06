@@ -179,7 +179,7 @@ def fetch_account_metrics(user_id: str, token: str, since: int, until: int) -> d
     resp = requests.get(
         f"{THREADS_API_BASE}/{user_id}/threads_insights",
         params={
-            "metric": "views,likes,replies,reposts,quotes",
+            "metric": "views",
             "period": "day",
             "since":  since,
             "until":  until,
@@ -209,8 +209,12 @@ def fetch_account_metrics(user_id: str, token: str, since: int, until: int) -> d
     )
     if resp2.status_code == 200:
         for item in resp2.json().get("data", []):
-            values = item.get("values", [])
-            metrics["followers_count"] = values[-1]["value"] if values else None
+            tv = item.get("total_value")
+            if tv is not None:
+                metrics["followers_count"] = tv.get("value")
+            else:
+                values = item.get("values", [])
+                metrics["followers_count"] = values[-1]["value"] if values else None
     else:
         log.warning(f"  followers_count {user_id}: {resp2.status_code} {resp2.text[:80]}")
         metrics["followers_count"] = None
