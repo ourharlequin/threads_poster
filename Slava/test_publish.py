@@ -1,10 +1,11 @@
 """
 Тестовая публикация одного поста для каждого аккаунта.
-Запуск: python test_publish.py
+Запуск: python test_publish.py [--account account_id]
 """
 
 import os
 import time
+import argparse
 import logging
 import requests
 import duckdb
@@ -72,7 +73,13 @@ def mark_posted(post_id: int, threads_post_id: str):
         )
 
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--account", default=None, help="Опубликовать только для этого account_id")
+args = parser.parse_args()
+
 accounts = load_accounts()
+if args.account:
+    accounts = [a for a in accounts if a["account_id"] == args.account]
 log.info(f"Аккаунтов: {len(accounts)}")
 
 for acc in accounts:

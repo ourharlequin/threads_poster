@@ -1,18 +1,18 @@
 services:
   threads_publisher:
     build: .
-    container_name: threads_publisher
+    container_name: budimir_publisher
     restart: always
     env_file: .env
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
       - .:/app
-      - threads_data:/app/data
+      - ./data:/app/data
 
   threads_scheduler:
     build: .
-    container_name: threads_scheduler
+    container_name: budimir_scheduler
     restart: always
     env_file: .env
     environment:
@@ -20,7 +20,7 @@ services:
       - TZ=Europe/Belgrade
     volumes:
       - .:/app
-      - threads_data:/app/data
+      - ./data:/app/data
     entrypoint: ["python", "scheduler.py"]
 
   threads_generator:
@@ -32,7 +32,7 @@ services:
       - PYTHONUNBUFFERED=1
     volumes:
       - .:/app
-      - threads_data:/app/data
+      - ./data:/app/data
     entrypoint: ["python", "generate_posts.py"]
     # Usage: docker-compose --profile tools run --rm threads_generator --account event_parsing
 
@@ -47,6 +47,3 @@ services:
       - .:/app
     entrypoint: ["python", "refresh_tokens.py"]
     # Usage: docker-compose --profile tools run --rm threads_refresher
-
-volumes:
-  threads_data:

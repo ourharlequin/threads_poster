@@ -29,4 +29,4 @@ jobs:
             docker compose up -d --build threads_publisher threads_scheduler
 
             cd /root/threads_poster
-            docker compose up -d --build merger superset superset_redis
+            docker compose up -d --build merger superset superset_redis threads_api

@@ -1,4 +1,28 @@
 services:
+  threads_api:
+    build:
+      context: ./threads_api
+    container_name: threads_api
+    restart: always
+    ports:
+      - "7843:7843"
+    environment:
+      - TZ=Europe/Belgrade
+      - SUPERSET_URL=http://threads_superset:8088
+      - SUPERSET_ADMIN_USER=${SUPERSET_ADMIN_USER:-admin}
+      - SUPERSET_ADMIN_PASSWORD=${SUPERSET_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ./Budimir:/app/participants/budimir:ro
+      - ./Budimir/data:/app/data/budimir
+      - ./Tanya:/app/participants/tanya:ro
+      - ./Tanya/data:/app/data/tanya
+      - ./Slava:/app/participants/slava:ro
+      - ./Slava/data:/app/data/slava
+      - ./data:/app/data/analytics:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - merger
+
   merger:
     build:
       context: ./superset
