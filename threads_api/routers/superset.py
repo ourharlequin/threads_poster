@@ -152,17 +152,17 @@ def rebuild():
 
     specs = [
         ("Просмотры по аккаунтам", "echarts_timeseries_line", "account_insights", {
-            "time_range": "No filter", "x_axis": "date",
+            "time_range": "No filter", "x_axis": "date", "granularity_sqla": "date",
             "metrics": [_metric("SUM", "views", "Просмотры")],
             "groupby": ["account_id"], "smooth": True, "show_legend": True, "row_limit": 10000,
         }),
         ("Рост фолловеров", "echarts_timeseries_line", "account_insights", {
-            "time_range": "No filter", "x_axis": "date",
+            "time_range": "No filter", "x_axis": "date", "granularity_sqla": "date",
             "metrics": [_metric("MAX", "followers_count", "Фолловеры")],
             "groupby": ["account_id"], "smooth": True, "show_legend": True, "row_limit": 10000,
         }),
         ("Вовлечённость по аккаунтам", "echarts_timeseries_bar", "account_insights", {
-            "time_range": "No filter", "x_axis": "date",
+            "time_range": "No filter", "x_axis": "date", "granularity_sqla": "date",
             "metrics": [
                 _metric("SUM", "likes",   "Лайки"),
                 _metric("SUM", "replies", "Ответы"),
@@ -173,7 +173,8 @@ def rebuild():
         }),
         ("Постов опубликовано по дням", "echarts_timeseries_bar", "posts", {
             "time_range": "No filter", "x_axis": "posted_at", "time_grain_sqla": "P1D",
-            "metrics": [{"expressionType": "SIMPLE", "aggregate": "COUNT", "column": None, "label": "Постов"}],
+            "granularity_sqla": "posted_at",
+            "metrics": [{"expressionType": "SQL", "sqlExpression": "COUNT(*)", "label": "Постов", "hasCustomLabel": True}],
             "groupby": ["account_id"], "show_legend": True, "row_limit": 10000,
         }),
         ("Топ постов по просмотрам", "table", "post_insights", {
@@ -184,7 +185,7 @@ def rebuild():
         }),
         ("Статус постов", "pie", "posts", {
             "time_range": "No filter",
-            "metric": _metric("COUNT", None, "Постов"),
+            "metric": {"expressionType": "SQL", "sqlExpression": "COUNT(*)", "label": "Постов", "hasCustomLabel": True},
             "groupby": ["status"], "show_legend": True, "show_labels": True,
         }),
     ]
