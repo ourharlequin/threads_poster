@@ -204,10 +204,14 @@ def rebuild():
             "dashboard_title": "Threads Analytics",
             "published": True,
             "position_json": json.dumps(_build_layout(chart_ids)),
-            "slices": chart_ids,
         })
         if r.is_success:
             dash_id = r.json().get("id")
+            superset_client.put(f"/api/v1/dashboard/{dash_id}", json={
+                "slices": chart_ids,
+            })
+        else:
+            raise HTTPException(502, f"Dashboard creation failed: {r.status_code} {r.text[:300]}")
 
     return {
         "ok": True,
