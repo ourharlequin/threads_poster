@@ -204,6 +204,7 @@ def rebuild():
             "dashboard_title": "Threads Analytics",
             "published": True,
             "position_json": json.dumps(_build_layout(chart_ids)),
+            "slices": chart_ids,
         })
         if r.is_success:
             dash_id = r.json().get("id")
