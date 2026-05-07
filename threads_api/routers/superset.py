@@ -214,19 +214,20 @@ def rebuild():
             failed += 1
 
     dash_id = None
+    put_debug = None
     if chart_ids:
         r = superset_client.post("/api/v1/dashboard/", json={
             "dashboard_title": "Threads Analytics",
             "published": True,
+            "position_json": json.dumps(_build_layout(chart_ids)),
         })
         if not r.is_success:
             raise HTTPException(502, f"Dashboard creation failed: {r.status_code} {r.text[:300]}")
         dash_id = r.json().get("id")
-        put_r = superset_client.put(f"/api/v1/dashboard/{dash_id}", json={
-            "position_json": json.dumps(_build_layout(chart_ids)),
-            "published": True,
-        })
-        put_debug = {"status": put_r.status_code, "body": put_r.text[:300]}
+        # Verify slices are linked
+        check = superset_client.get(f"/api/v1/dashboard/{dash_id}")
+        slices = [s["slice_name"] for s in check.json().get("result", {}).get("slices", [])]
+        put_debug = {"slices_linked": len(slices), "slices": slices}
 
     return {
         "ok": True,
