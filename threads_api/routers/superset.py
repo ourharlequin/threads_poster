@@ -157,49 +157,41 @@ def rebuild():
     chart_ids = []
 
     specs = [
-        ("Просмотры по аккаунтам", "echarts_timeseries_line", "account_insights", {
+        ("Views by Account", "echarts_timeseries_line", "account_insights", {
             "time_range": "No filter", "x_axis": "date", "granularity_sqla": "date",
-            "metrics": [_metric("SUM", "views", "Просмотры")],
+            "metrics": [_metric("SUM", "views", "Views")],
             "groupby": ["account_id"], "smooth": True, "show_legend": True, "row_limit": 10000,
         }),
-        ("Рост фолловеров", "echarts_timeseries_line", "account_insights", {
+        ("Follower Growth", "echarts_timeseries_line", "account_insights", {
             "time_range": "No filter", "x_axis": "date", "granularity_sqla": "date",
-            "metrics": [_metric("MAX", "followers_count", "Фолловеры")],
+            "metrics": [_metric("MAX", "followers_count", "Followers")],
             "groupby": ["account_id"], "smooth": True, "show_legend": True, "row_limit": 10000,
         }),
-        ("Вовлечённость по аккаунтам", "echarts_timeseries_bar", "account_insights", {
+        ("Engagement by Account", "echarts_timeseries_bar", "account_insights", {
             "time_range": "No filter", "x_axis": "date", "granularity_sqla": "date",
             "metrics": [
-                _metric("SUM", "likes",   "Лайки"),
-                _metric("SUM", "replies", "Ответы"),
-                _metric("SUM", "reposts", "Репосты"),
-                _metric("SUM", "quotes",  "Цитаты"),
+                _metric("SUM", "likes",   "Likes"),
+                _metric("SUM", "replies", "Replies"),
+                _metric("SUM", "reposts", "Reposts"),
+                _metric("SUM", "quotes",  "Quotes"),
             ],
             "groupby": ["account_id"], "show_legend": True, "row_limit": 10000,
         }),
-        ("Постов опубликовано по дням", "echarts_timeseries_bar", "posts", {
+        ("Posts Published per Day", "echarts_timeseries_bar", "posts", {
             "time_range": "No filter", "x_axis": "posted_at", "time_grain_sqla": "P1D",
             "granularity_sqla": "posted_at",
-            "metrics": [{"expressionType": "SQL", "sqlExpression": "COUNT(*)", "label": "Постов", "hasCustomLabel": True}],
+            "metrics": [{"expressionType": "SQL", "sqlExpression": "COUNT(*)", "label": "Posts", "hasCustomLabel": True}],
             "groupby": ["account_id"], "show_legend": True, "row_limit": 10000,
         }),
-        ("Топ постов по просмотрам", "table", "post_insights", {
+        ("Top Posts by Views", "table", "post_insights", {
             "time_range": "No filter", "query_mode": "raw",
-            "columns": [
-                {"column_name": "post_id", "label": "post_id"},
-                {"column_name": "views", "label": "views"},
-                {"column_name": "likes", "label": "likes"},
-                {"column_name": "replies", "label": "replies"},
-                {"column_name": "reposts", "label": "reposts"},
-                {"column_name": "quotes", "label": "quotes"},
-                {"column_name": "fetched_at", "label": "fetched_at"},
-            ],
-            "order_by_cols": [["views", False]],
+            "all_columns": ["post_id", "views", "likes", "replies", "reposts", "quotes", "fetched_at"],
+            "order_by_cols": [json.dumps(["views", False])],
             "page_length": 25, "show_cell_bars": True, "include_search": True,
         }),
-        ("Статус постов", "pie", "posts", {
+        ("Post Status", "pie", "posts", {
             "time_range": "No filter",
-            "metric": {"expressionType": "SQL", "sqlExpression": "COUNT(*)", "label": "Постов", "hasCustomLabel": True},
+            "metric": {"expressionType": "SQL", "sqlExpression": "COUNT(*)", "label": "Posts", "hasCustomLabel": True},
             "groupby": ["status"], "show_legend": True, "show_labels": True,
         }),
     ]
