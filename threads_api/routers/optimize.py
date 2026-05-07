@@ -1,8 +1,7 @@
 import os
 import json
 import duckdb
-from cerebras.cloud.sdk import Cerebras
-from dotenv import dotenv_values
+from groq import Groq
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -96,11 +95,10 @@ def _fmt_posts(posts: list[dict]) -> str:
     return "\n\n".join(parts)
 
 
-def _call_cerebras(account_id: str, metric: str, accounts: dict, top: list, worst: list, env_path: str) -> dict:
-    env = dotenv_values(env_path)
-    api_key = env.get("CEREBRAS_API_KEY")
+def _call_groq(account_id: str, metric: str, accounts: dict, top: list, worst: list) -> dict:
+    api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
-        raise HTTPException(500, f"CEREBRAS_API_KEY not found in {env_path}")
+        raise HTTPException(500, "GROQ_API_KEY not set")
 
     config = accounts.get(account_id, {})
     current_system = config.get("system", "")
@@ -128,14 +126,14 @@ def _call_cerebras(account_id: str, metric: str, accounts: dict, top: list, wors
         "Suggest improved formats (and optionally new system prompt). Return ONLY JSON."
     )
 
-    client = Cerebras(api_key=api_key)
+    client = Groq(api_key=api_key)
     resp = client.chat.completions.create(
-        model="llama3.3-70b",
+        model="llama-3.3-70b-versatile",
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ],
-        max_completion_tokens=4096,
+        max_tokens=4096,
         temperature=0.3,
     )
     text = resp.choices[0].message.content.strip()
@@ -160,7 +158,7 @@ def analyze_prompts(account_id: str, metric: str = "weighted"):
     worst = _fetch_posts(account_id, metric, limit=10, worst=True)
     if len(top) < 3:
         raise HTTPException(422, f"Not enough data for '{account_id}' — need at least 3 posted+insights rows")
-    suggestion = _call_cerebras(account_id, metric, accounts, top, worst, acc["scripts_dir"] + "/.env")
+    suggestion = _call_groq(account_id, metric, accounts, top, worst)
     return {"ok": True, "data": {"account_id": account_id, "metric": metric, "suggestion": suggestion}}
 
 

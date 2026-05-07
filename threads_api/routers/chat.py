@@ -1,10 +1,9 @@
+import os
 import json
-from cerebras.cloud.sdk import Cerebras
-from dotenv import dotenv_values
+from groq import Groq
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
-import registry
 from routers.analytics import top_posts, followers, account_stats, compare
 from routers.system import list_accounts
 
@@ -90,12 +89,10 @@ _TOOLS = [
 
 
 def _get_api_key() -> str:
-    for acc in registry.REGISTRY.values():
-        env = dotenv_values(acc["scripts_dir"] + "/.env")
-        key = env.get("CEREBRAS_API_KEY", "")
-        if key:
-            return key
-    raise RuntimeError("CEREBRAS_API_KEY not found in any participant .env")
+    key = os.environ.get("GROQ_API_KEY", "")
+    if not key:
+        raise RuntimeError("GROQ_API_KEY not set")
+    return key
 
 
 def _call_tool(name: str, inp: dict) -> dict:
@@ -121,7 +118,7 @@ class ChatRequest(BaseModel):
 
 
 async def _stream(req: ChatRequest):
-    client = Cerebras(api_key=_get_api_key())
+    client = Groq(api_key=_get_api_key())
     messages = (
         [{"role": "system", "content": _SYSTEM}]
         + req.history
@@ -134,7 +131,7 @@ async def _stream(req: ChatRequest):
         finish_reason = None
 
         stream = client.chat.completions.create(
-            model="llama3.3-70b",
+            model="llama-3.3-70b-versatile",
             messages=messages,
             tools=_TOOLS,
             tool_choice="auto",
