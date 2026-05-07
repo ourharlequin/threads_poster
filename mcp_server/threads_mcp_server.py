@@ -146,6 +146,20 @@ def threads_list_accounts() -> dict:
     return _get("/system/accounts")
 
 
+# ── Оптимизация промптов ──────────────────────────────────────────────────────
+
+@mcp.tool()
+def threads_analyze_prompts(account_id: str, metric: str = "weighted") -> dict:
+    """Анализ топ/худших постов и предложение улучшений промптов через Claude. metric: 'weighted' (views×0.4 + engagement×0.6) или 'rate' (engagement/views)."""
+    return _get("/optimize/analyze/" + account_id, metric=metric)
+
+
+@mcp.tool()
+def threads_apply_prompts(account_id: str, new_formats: dict | None = None, new_system: str | None = None) -> dict:
+    """Применить предложенные изменения промптов к prompts.py. new_formats — dict format_name→text, new_system — строка или None."""
+    return _post("/optimize/apply/" + account_id, new_formats=new_formats, new_system=new_system)
+
+
 # ── Superset ──────────────────────────────────────────────────────────────────
 
 @mcp.tool()

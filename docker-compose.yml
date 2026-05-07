@@ -11,12 +11,13 @@ services:
       - SUPERSET_URL=http://threads_superset:8088
       - SUPERSET_ADMIN_USER=${SUPERSET_ADMIN_USER:-admin}
       - SUPERSET_ADMIN_PASSWORD=${SUPERSET_ADMIN_PASSWORD:-admin}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     volumes:
-      - ./Budimir:/app/participants/budimir:ro
+      - ./Budimir:/app/participants/budimir
       - ./Budimir/data:/app/data/budimir
-      - ./Tanya:/app/participants/tanya:ro
+      - ./Tanya:/app/participants/tanya
       - ./Tanya/data:/app/data/tanya
-      - ./Slava:/app/participants/slava:ro
+      - ./Slava:/app/participants/slava
       - ./Slava/data:/app/data/slava
       - ./data:/app/data/analytics:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
