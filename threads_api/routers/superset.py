@@ -224,10 +224,29 @@ def rebuild():
         if not r.is_success:
             raise HTTPException(502, f"Dashboard creation failed: {r.status_code} {r.text[:300]}")
         dash_id = r.json().get("id")
-        # Verify slices are linked
-        check = superset_client.get(f"/api/v1/dashboard/{dash_id}")
-        slices = [s["slice_name"] for s in check.json().get("result", {}).get("slices", [])]
-        put_debug = {"slices_linked": len(slices), "slices": slices}
+        # Link slices via docker exec inside Superset container (REST API doesn't trigger association)
+        docker_client = _docker_client()
+        container = docker_client.containers.get("threads_superset")
+        script = (
+            "from superset import create_app; app = create_app();\n"
+            "exec(open('/dev/stdin').read())"
+        )
+        link_script = f"""
+from superset import create_app
+app = create_app()
+with app.app_context():
+    from superset.extensions import db
+    from superset.models.dashboard import Dashboard
+    from superset.models.slice import Slice
+    dash = db.session.query(Dashboard).filter_by(id={dash_id}).first()
+    slices = db.session.query(Slice).filter(Slice.id.in_({chart_ids})).all()
+    dash.slices = slices
+    db.session.commit()
+    print(f'linked {{len(slices)}} slices')
+"""
+        exit_code, output = container.exec_run(["python", "-c", link_script], workdir="/app")
+        out_text = output.decode("utf-8", errors="replace") if isinstance(output, bytes) else str(output)
+        put_debug = {"exit_code": exit_code, "output": out_text[-300:]}
 
     return {
         "ok": True,
