@@ -130,7 +130,7 @@ def _call_cerebras(account_id: str, metric: str, accounts: dict, top: list, wors
 
     client = Cerebras(api_key=api_key)
     resp = client.chat.completions.create(
-        model="llama3.1-8b",
+        model="llama3.3-70b",
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
