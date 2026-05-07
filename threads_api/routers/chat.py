@@ -11,10 +11,10 @@ from routers.system import list_accounts
 router = APIRouter()
 
 _SYSTEM = """\
-Ты аналитический ассистент для системы Threads-постера.
-Участники: budimir, slava, tanya — каждый управляет несколькими Threads-аккаунтами.
-Отвечай кратко и конкретно. Используй инструменты чтобы получить реальные данные.
-Если пользователь пишет по-русски — отвечай по-русски.\
+You are an analytics assistant for the Threads poster system.
+Participants: budimir, slava, tanya — each manages several Threads accounts.
+Be concise and specific. Use tools to fetch real data.
+Reply in the same language the user writes in.\
 """
 
 _TOOLS = [
@@ -134,7 +134,7 @@ async def _stream(req: ChatRequest):
         finish_reason = None
 
         stream = client.chat.completions.create(
-            model="llama3.1-70b",
+            model="llama3.1-8b",
             messages=messages,
             tools=_TOOLS,
             tool_choice="auto",
@@ -210,7 +210,7 @@ def landing():
 
 
 _HTML = """<!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -323,14 +323,14 @@ button:hover:not(:disabled) { background: #3a8eef; }
     <span>budimir · slava · tanya</span>
 </header>
 <div id="chat">
-    <div class="msg assistant">Привет! Спроси меня о статистике аккаунтов — топ постов, рост фолловеров, сравнение участников.</div>
+    <div class="msg assistant">Hi! Ask me about account stats — top posts, follower growth, participant comparison.</div>
 </div>
 <form id="form" onsubmit="send(event)">
-    <textarea id="input" placeholder="Спроси о статистике..." rows="1"
+    <textarea id="input" placeholder="Ask about stats..." rows="1"
         oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
         onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();document.getElementById('form').dispatchEvent(new Event('submit',{cancelable:true}))}">
     </textarea>
-    <button id="btn" type="submit">Отправить</button>
+    <button id="btn" type="submit">Send</button>
 </form>
 <script>
 let history = [];
