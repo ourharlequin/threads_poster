@@ -134,7 +134,7 @@ async def _stream(req: ChatRequest):
         finish_reason = None
 
         stream = client.chat.completions.create(
-            model="llama3.1-70b",
+            model="llama3.1-8b",
             messages=messages,
             tools=_TOOLS,
             tool_choice="auto",
