@@ -223,11 +223,10 @@ def rebuild():
             raise HTTPException(502, f"Dashboard creation failed: {r.status_code} {r.text[:300]}")
         dash_id = r.json().get("id")
         put_r = superset_client.put(f"/api/v1/dashboard/{dash_id}", json={
-            "slices": chart_ids,
             "position_json": json.dumps(_build_layout(chart_ids)),
             "published": True,
         })
-        put_debug = {"status": put_r.status_code, "body": put_r.text[:500]}
+        put_debug = {"status": put_r.status_code, "body": put_r.text[:300]}
 
     return {
         "ok": True,
