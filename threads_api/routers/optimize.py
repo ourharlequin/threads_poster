@@ -1,7 +1,8 @@
 import os
 import json
 import duckdb
-import anthropic
+from cerebras.cloud.sdk import Cerebras
+from dotenv import dotenv_values
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -95,10 +96,11 @@ def _fmt_posts(posts: list[dict]) -> str:
     return "\n\n".join(parts)
 
 
-def _call_claude(account_id: str, metric: str, accounts: dict, top: list, worst: list) -> dict:
-    api_key = os.getenv("ANTHROPIC_API_KEY")
+def _call_cerebras(account_id: str, metric: str, accounts: dict, top: list, worst: list, env_path: str) -> dict:
+    env = dotenv_values(env_path)
+    api_key = env.get("CEREBRAS_API_KEY")
     if not api_key:
-        raise HTTPException(500, "ANTHROPIC_API_KEY not set in threads_api environment")
+        raise HTTPException(500, f"CEREBRAS_API_KEY not found in {env_path}")
 
     config = accounts.get(account_id, {})
     current_system = config.get("system", "")
@@ -106,47 +108,47 @@ def _call_claude(account_id: str, metric: str, accounts: dict, top: list, worst:
     metric_desc = "engagement/views ratio" if metric == "rate" else "views×0.4 + engagement×0.6"
     formats_str = "\n".join(f'  "{k}":\n    {v}' for k, v in current_formats.items())
 
-    client = anthropic.Anthropic(api_key=api_key)
-    response = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=4096,
-        system=[{
-            "type": "text",
-            "text": (
-                "You are an expert at analyzing social media performance and writing AI prompt instructions.\n"
-                "Analyze top vs worst posts, identify patterns, suggest improved prompt formats.\n"
-                "PRIMARY focus: improve 'formats' entries. Change 'system' only if clearly needed.\n"
-                "Return ONLY valid JSON (no markdown) with keys:\n"
-                "- analysis: string (2-3 sentences on what works vs what doesn't)\n"
-                "- new_formats: dict of format_name -> improved instruction string\n"
-                "- new_system: string OR null\n"
-                "- reasoning: string (why these changes)"
-            ),
-            "cache_control": {"type": "ephemeral"},
-        }],
-        messages=[{
-            "role": "user",
-            "content": (
-                f"Account: {account_id}\n"
-                f"Ranking metric: {metric_desc}\n\n"
-                f"=== CURRENT SYSTEM PROMPT ===\n{current_system}\n\n"
-                f"=== CURRENT FORMATS ===\n{formats_str}\n\n"
-                f"=== TOP {len(top)} POSTS ===\n{_fmt_posts(top)}\n\n"
-                f"=== WORST {len(worst)} POSTS ===\n{_fmt_posts(worst)}\n\n"
-                "Suggest improved formats (and optionally new system prompt)."
-            ),
-        }],
+    system_prompt = (
+        "You are an expert at analyzing social media performance and writing AI prompt instructions.\n"
+        "Analyze top vs worst posts, identify patterns, suggest improved prompt formats.\n"
+        "PRIMARY focus: improve 'formats' entries. Change 'system' only if clearly needed.\n"
+        "Return ONLY valid JSON (no markdown) with these keys:\n"
+        '- "analysis": string (2-3 sentences on what works vs what doesn\'t)\n'
+        '- "new_formats": dict of format_name -> improved instruction string\n'
+        '- "new_system": string OR null\n'
+        '- "reasoning": string (why these changes)'
+    )
+    user_prompt = (
+        f"Account: {account_id}\n"
+        f"Ranking metric: {metric_desc}\n\n"
+        f"=== CURRENT SYSTEM PROMPT ===\n{current_system}\n\n"
+        f"=== CURRENT FORMATS ===\n{formats_str}\n\n"
+        f"=== TOP {len(top)} POSTS ===\n{_fmt_posts(top)}\n\n"
+        f"=== WORST {len(worst)} POSTS ===\n{_fmt_posts(worst)}\n\n"
+        "Suggest improved formats (and optionally new system prompt). Return ONLY JSON."
     )
 
-    text = response.content[0].text.strip()
-    if text.startswith("```"):
-        text = text.split("\n", 1)[1].rsplit("```", 1)[0]
-    return json.loads(text)
+    client = Cerebras(api_key=api_key)
+    resp = client.chat.completions.create(
+        model="llama3.1-70b",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        max_completion_tokens=4096,
+        temperature=0.3,
+    )
+    text = resp.choices[0].message.content.strip()
+    # Extract JSON robustly — llama may add preamble text or markdown fences
+    start, end = text.find("{"), text.rfind("}")
+    if start == -1 or end == -1:
+        raise HTTPException(502, f"Cerebras response is not JSON: {text[:200]}")
+    return json.loads(text[start:end + 1])
 
 
 @router.get("/analyze/{account_id}")
 def analyze_prompts(account_id: str, metric: str = "weighted"):
-    """Анализ топ/худших постов и предложение улучшений промптов через Claude."""
+    """Анализ топ/худших постов и предложение улучшений промптов через Cerebras."""
     if metric not in ("weighted", "rate"):
         raise HTTPException(400, "metric must be 'weighted' or 'rate'")
     acc = _get_account(account_id)
@@ -158,7 +160,7 @@ def analyze_prompts(account_id: str, metric: str = "weighted"):
     worst = _fetch_posts(account_id, metric, limit=10, worst=True)
     if len(top) < 3:
         raise HTTPException(422, f"Not enough data for '{account_id}' — need at least 3 posted+insights rows")
-    suggestion = _call_claude(account_id, metric, accounts, top, worst)
+    suggestion = _call_cerebras(account_id, metric, accounts, top, worst, acc["scripts_dir"] + "/.env")
     return {"ok": True, "data": {"account_id": account_id, "metric": metric, "suggestion": suggestion}}
 
 

@@ -4,4 +4,4 @@ duckdb==1.2.1
 python-dotenv>=1.0.0
 docker>=7.0.0
 httpx>=0.28.1
-anthropic>=0.40.0
+cerebras-cloud-sdk>=1.0.0
