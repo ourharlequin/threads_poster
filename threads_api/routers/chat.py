@@ -126,68 +126,57 @@ async def _stream(req: ChatRequest):
     )
 
     while True:
-        tool_calls_acc: dict[int, dict] = {}
-        full_text = ""
-        finish_reason = None
-
-        stream = client.chat.completions.create(
+        # Non-streaming call with tools to avoid Groq streaming+tools bug
+        response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=messages,
             tools=_TOOLS,
             tool_choice="auto",
-            max_completion_tokens=2048,
-            stream=True,
+            max_tokens=2048,
         )
+        choice = response.choices[0]
 
-        for chunk in stream:
-            choice = chunk.choices[0]
-            delta = choice.delta
-            finish_reason = choice.finish_reason or finish_reason
-
-            if delta.content:
-                full_text += delta.content
-                yield f"data: {json.dumps({'type': 'text', 'text': delta.content})}\n\n"
-
-            if delta.tool_calls:
-                for tc in delta.tool_calls:
-                    idx = tc.index
-                    if idx not in tool_calls_acc:
-                        tool_calls_acc[idx] = {"id": "", "name": "", "arguments": ""}
-                    if tc.id:
-                        tool_calls_acc[idx]["id"] = tc.id
-                    if tc.function:
-                        if tc.function.name:
-                            tool_calls_acc[idx]["name"] += tc.function.name
-                        if tc.function.arguments:
-                            tool_calls_acc[idx]["arguments"] += tc.function.arguments
-
-        if finish_reason == "tool_calls" and tool_calls_acc:
-            # Add assistant message with tool_calls
+        if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
+            tool_calls = choice.message.tool_calls
             messages.append({
                 "role": "assistant",
                 "tool_calls": [
                     {
-                        "id": tc["id"],
+                        "id": tc.id,
                         "type": "function",
-                        "function": {"name": tc["name"], "arguments": tc["arguments"]},
+                        "function": {"name": tc.function.name, "arguments": tc.function.arguments},
                     }
-                    for tc in tool_calls_acc.values()
+                    for tc in tool_calls
                 ],
             })
-            # Execute tools and add results
-            for tc in tool_calls_acc.values():
-                yield f"data: {json.dumps({'type': 'tool', 'name': tc['name']})}\n\n"
+            for tc in tool_calls:
+                yield f"data: {json.dumps({'type': 'tool', 'name': tc.function.name})}\n\n"
                 try:
-                    inp = json.loads(tc["arguments"] or "{}")
+                try:
+                    inp = json.loads(tc.function.arguments or "{}")
                 except json.JSONDecodeError:
                     inp = {}
-                result = _call_tool(tc["name"], inp)
+                result = _call_tool(tc.function.name, inp)
                 messages.append({
                     "role": "tool",
-                    "tool_call_id": tc["id"],
+                    "tool_call_id": tc.id,
                     "content": json.dumps(result, ensure_ascii=False),
                 })
         else:
+            # Stream the final text response
+            full_text = ""
+            stream = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=messages,
+                max_tokens=2048,
+                stream=True,
+            )
+            for chunk in stream:
+                delta = chunk.choices[0].delta
+                if delta.content:
+                    full_text += delta.content
+                    yield f"data: {json.dumps({'type': 'text', 'text': delta.content})}\n\n"
+
             new_history = req.history + [
                 {"role": "user", "content": req.message},
                 {"role": "assistant", "content": full_text},
