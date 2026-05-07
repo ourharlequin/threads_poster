@@ -144,6 +144,12 @@ def rebuild():
     except Exception as e:
         raise HTTPException(502, f"Cannot reach Superset: {e}")
 
+    # Clean up old dashboards and charts
+    for dash in superset_client.get("/api/v1/dashboard/", params={"page_size": 100}).json().get("result", []):
+        superset_client.delete(f"/api/v1/dashboard/{dash['id']}")
+    for chart in superset_client.get("/api/v1/chart/", params={"page_size": 100}).json().get("result", []):
+        superset_client.delete(f"/api/v1/chart/{chart['id']}")
+
     ds_ids = _get_dataset_ids(superset_client)
     if not ds_ids:
         raise HTTPException(502, "No datasets found in Superset — run setup_db.py first")
@@ -179,8 +185,16 @@ def rebuild():
         }),
         ("Топ постов по просмотрам", "table", "post_insights", {
             "time_range": "No filter", "query_mode": "raw",
-            "columns": ["post_id", "views", "likes", "replies", "reposts", "quotes", "fetched_at"],
-            "order_by_cols": [json.dumps(["views", False])],
+            "columns": [
+                {"column_name": "post_id", "label": "post_id"},
+                {"column_name": "views", "label": "views"},
+                {"column_name": "likes", "label": "likes"},
+                {"column_name": "replies", "label": "replies"},
+                {"column_name": "reposts", "label": "reposts"},
+                {"column_name": "quotes", "label": "quotes"},
+                {"column_name": "fetched_at", "label": "fetched_at"},
+            ],
+            "order_by_cols": [["views", False]],
             "page_length": 25, "show_cell_bars": True, "include_search": True,
         }),
         ("Статус постов", "pie", "posts", {
@@ -204,15 +218,16 @@ def rebuild():
         r = superset_client.post("/api/v1/dashboard/", json={
             "dashboard_title": "Threads Analytics",
             "published": True,
-            "position_json": json.dumps(_build_layout(chart_ids)),
         })
-        if r.is_success:
-            dash_id = r.json().get("id")
-            superset_client.put(f"/api/v1/dashboard/{dash_id}", json={
-                "slices": chart_ids,
-            })
-        else:
+        if not r.is_success:
             raise HTTPException(502, f"Dashboard creation failed: {r.status_code} {r.text[:300]}")
+        dash_id = r.json().get("id")
+        put_r = superset_client.put(f"/api/v1/dashboard/{dash_id}", json={
+            "slices": chart_ids,
+            "position_json": json.dumps(_build_layout(chart_ids)),
+            "published": True,
+        })
+        put_debug = {"status": put_r.status_code, "body": put_r.text[:500]}
 
     return {
         "ok": True,
@@ -221,5 +236,6 @@ def rebuild():
             "charts_failed": failed,
             "dashboard_id": dash_id,
             "dashboard_url": f"{SUPERSET_URL}/superset/dashboard/{dash_id}/" if dash_id else None,
+            "put_debug": put_debug if dash_id else None,
         },
     }
