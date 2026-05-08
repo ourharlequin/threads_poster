@@ -152,7 +152,6 @@ async def _stream(req: ChatRequest):
             for tc in tool_calls:
                 yield f"data: {json.dumps({'type': 'tool', 'name': tc.function.name})}\n\n"
                 try:
-                try:
                     inp = json.loads(tc.function.arguments or "{}")
                 except json.JSONDecodeError:
                     inp = {}
