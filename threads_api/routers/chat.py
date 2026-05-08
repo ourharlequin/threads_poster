@@ -1,6 +1,6 @@
 import os
 import json
-from groq import Groq
+from openai import OpenAI
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
@@ -88,11 +88,14 @@ _TOOLS = [
 ]
 
 
-def _get_api_key() -> str:
-    key = os.environ.get("GROQ_API_KEY", "")
+def _get_client() -> OpenAI:
+    key = os.environ.get("HF_TOKEN", "")
     if not key:
-        raise RuntimeError("GROQ_API_KEY not set")
-    return key
+        raise RuntimeError("HF_TOKEN not set")
+    return OpenAI(
+        base_url="https://router.huggingface.co/v1",
+        api_key=key,
+    )
 
 
 def _call_tool(name: str, inp: dict) -> dict:
@@ -118,7 +121,7 @@ class ChatRequest(BaseModel):
 
 
 async def _stream(req: ChatRequest):
-    client = Groq(api_key=_get_api_key())
+    client = _get_client()
     messages = (
         [{"role": "system", "content": _SYSTEM}]
         + req.history
@@ -128,7 +131,7 @@ async def _stream(req: ChatRequest):
     while True:
         # Non-streaming call with tools to avoid Groq streaming+tools bug
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="Qwen/Qwen2.5-72B-Instruct",
             messages=messages,
             tools=_TOOLS,
             tool_choice="auto",
@@ -165,7 +168,7 @@ async def _stream(req: ChatRequest):
             # Stream the final text response
             full_text = ""
             stream = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model="Qwen/Qwen2.5-72B-Instruct",
                 messages=messages,
                 max_tokens=2048,
                 stream=True,
