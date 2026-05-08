@@ -174,6 +174,8 @@ async def _stream(req: ChatRequest):
                 stream=True,
             )
             for chunk in stream:
+                if not chunk.choices:
+                    continue
                 delta = chunk.choices[0].delta
                 if delta.content:
                     full_text += delta.content
