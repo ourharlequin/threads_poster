@@ -41,6 +41,7 @@ threads_api  (Docker, port 7843)
 ### Budimir (6 accounts) — active
 ### Tanya (6 accounts) — active
 ### Slava (6 accounts) — active
+### Chiara (6 accounts) — active
 
 ---
 

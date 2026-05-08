@@ -20,6 +20,8 @@ services:
       - ./Tanya/data:/app/data/tanya
       - ./Slava:/app/participants/slava
       - ./Slava/data:/app/data/slava
+      - ./Chiara:/app/participants/chiara
+      - ./Chiara/data:/app/data/chiara
       - ./data:/app/data/analytics:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     depends_on:
@@ -38,6 +40,7 @@ services:
       - ./Budimir/data:/app/data/budimir:ro
       - ./Slava/data:/app/data/slava:ro
       - ./Tanya/data:/app/data/tanya:ro
+      - ./Chiara/data:/app/data/chiara:ro
       - ./data:/app/data/analytics
 
   superset:

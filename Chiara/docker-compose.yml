@@ -1,0 +1,49 @@
+services:
+  threads_publisher:
+    build: .
+    container_name: chiara_publisher
+    restart: always
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+      - ./data:/app/data
+
+  threads_scheduler:
+    build: .
+    container_name: chiara_scheduler
+    restart: always
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=Europe/Belgrade
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    entrypoint: ["python", "scheduler.py"]
+
+  threads_generator:
+    build: .
+    container_name: chiara_generator
+    profiles: ["tools"]
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    entrypoint: ["python", "generate_posts.py"]
+    # Usage: docker-compose --profile tools run --rm threads_generator --account account_name
+
+  threads_refresher:
+    build: .
+    container_name: chiara_refresher
+    profiles: ["tools"]
+    env_file: .env
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app
+    entrypoint: ["python", "refresh_tokens.py"]
+    # Usage: docker-compose --profile tools run --rm threads_refresher
