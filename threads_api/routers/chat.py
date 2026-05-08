@@ -128,7 +128,7 @@ async def _stream(req: ChatRequest):
     while True:
         # Non-streaming call with tools to avoid Groq streaming+tools bug
         response = client.chat.completions.create(
-            model="llama-3.1-70b-versatile",
+            model="llama-3.3-70b-versatile",
             messages=messages,
             tools=_TOOLS,
             tool_choice="auto",
@@ -165,7 +165,7 @@ async def _stream(req: ChatRequest):
             # Stream the final text response
             full_text = ""
             stream = client.chat.completions.create(
-                model="llama-3.1-70b-versatile",
+                model="llama-3.3-70b-versatile",
                 messages=messages,
                 max_tokens=2048,
                 stream=True,
