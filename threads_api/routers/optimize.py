@@ -1,7 +1,7 @@
 import os
 import json
 import duckdb
-from groq import Groq
+from openai import OpenAI
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -96,9 +96,9 @@ def _fmt_posts(posts: list[dict]) -> str:
 
 
 def _call_groq(account_id: str, metric: str, accounts: dict, top: list, worst: list) -> dict:
-    api_key = os.environ.get("GROQ_API_KEY")
+    api_key = os.environ.get("HF_TOKEN")
     if not api_key:
-        raise HTTPException(500, "GROQ_API_KEY not set")
+        raise HTTPException(500, "HF_TOKEN not set")
 
     config = accounts.get(account_id, {})
     current_system = config.get("system", "")
@@ -126,9 +126,9 @@ def _call_groq(account_id: str, metric: str, accounts: dict, top: list, worst: l
         "Suggest improved formats (and optionally new system prompt). Return ONLY JSON."
     )
 
-    client = Groq(api_key=api_key)
+    client = OpenAI(base_url="https://router.huggingface.co/v1", api_key=api_key)
     resp = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
+        model="Qwen/Qwen2.5-72B-Instruct",
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
