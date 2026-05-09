@@ -317,8 +317,8 @@ def replies_sentiment(account_id: str, days: int = 30):
 
     to_classify = [c for c in comments if not c["sentiment"]]
     classified: dict[str, str] = {}
-    for i in range(0, len(to_classify), BATCH_SIZE):
-        results = _analyze_sentiment(to_classify[i:i + BATCH_SIZE])
+    if to_classify:
+        results = _analyze_sentiment(to_classify)
         for item in results:
             classified[item["comment_id"]] = item["sentiment"]
 

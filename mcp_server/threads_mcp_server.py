@@ -191,7 +191,7 @@ def threads_fetch_replies(account_id: str, days: int = 7) -> dict:
 @mcp.tool()
 def threads_replies_sentiment(account_id: str, days: int = 30) -> dict:
     """Анализ тональности комментариев аккаунта за период (positive/negative/question/neutral) через Cerebras."""
-    return _get(f"/replies/sentiment/{account_id}", timeout=120, days=days)
+    return _get(f"/replies/sentiment/{account_id}", timeout=300, days=days)
 
 
 @mcp.tool()
