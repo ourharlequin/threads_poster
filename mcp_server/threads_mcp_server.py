@@ -6,8 +6,8 @@ mcp  = FastMCP("threads")
 BASE = os.getenv("THREADS_API_BASE", "http://localhost:7843")
 
 
-def _get(path: str, **params) -> dict:
-    r = httpx.get(f"{BASE}{path}", params={k: v for k, v in params.items() if v is not None}, timeout=30)
+def _get(path: str, timeout: int = 30, **params) -> dict:
+    r = httpx.get(f"{BASE}{path}", params={k: v for k, v in params.items() if v is not None}, timeout=timeout)
     r.raise_for_status()
     return r.json()
 
@@ -185,7 +185,7 @@ def threads_superset_rebuild() -> dict:
 @mcp.tool()
 def threads_fetch_replies(account_id: str, days: int = 7) -> dict:
     """Скачать новые комментарии к постам аккаунта из Threads API и сохранить в reply_log."""
-    return _get(f"/replies/fetch/{account_id}", days=days)
+    return _get(f"/replies/fetch/{account_id}", timeout=120, days=days)
 
 
 @mcp.tool()
