@@ -227,12 +227,20 @@ def _mark_replied(db_path: str, row_id: int, reply_id: str):
 
 @router.get("/debug/{account_id}")
 def debug_replies(account_id: str):
-    """Сравнение /replies и /conversation для первого поста."""
+    """Сравнение /replies и /conversation для поста с наибольшим числом реплаев."""
     acc = _get_account(account_id)
-    posts = _get_recent_posts(acc["db_path"], account_id, days=7)
-    if not posts:
-        return {"ok": False, "error": "no posts found"}
-    post = posts[0]
+    with duckdb.connect(acc["db_path"], read_only=True) as conn:
+        row = conn.execute("""
+            SELECT p.threads_post_id, p.content, pi.replies
+            FROM posts p
+            JOIN post_insights pi ON pi.post_id = p.id
+            WHERE p.account_id = ? AND p.threads_post_id IS NOT NULL
+            ORDER BY pi.replies DESC
+            LIMIT 1
+        """, [account_id]).fetchone()
+    if not row:
+        return {"ok": False, "error": "no posts with insights found"}
+    post = {"post_id": row[0], "content": row[1][:100], "replies_count": row[2]}
     fields = "id,text,username,timestamp"
 
     r1 = requests.get(
@@ -249,6 +257,8 @@ def debug_replies(account_id: str):
         "ok": True,
         "data": {
             "post_id": post["post_id"],
+            "content": post["content"],
+            "replies_in_db": post["replies_count"],
             "replies":      {"status": r1.status_code, "raw": r1.json()},
             "conversation": {"status": r2.status_code, "raw": r2.json()},
         },
