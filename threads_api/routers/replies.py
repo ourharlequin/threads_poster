@@ -227,23 +227,30 @@ def _mark_replied(db_path: str, row_id: int, reply_id: str):
 
 @router.get("/debug/{account_id}")
 def debug_replies(account_id: str):
-    """Сырой ответ Threads API для первого поста с threads_post_id."""
+    """Сравнение /replies и /conversation для первого поста."""
     acc = _get_account(account_id)
     posts = _get_recent_posts(acc["db_path"], account_id, days=7)
     if not posts:
         return {"ok": False, "error": "no posts found"}
     post = posts[0]
-    resp = requests.get(
+    fields = "id,text,username,timestamp"
+
+    r1 = requests.get(
         f"{THREADS_API_BASE}/{post['post_id']}/replies",
-        params={"fields": "id,text,username,timestamp", "access_token": acc["token"]},
+        params={"fields": fields, "access_token": acc["token"]},
+        timeout=15,
+    )
+    r2 = requests.get(
+        f"{THREADS_API_BASE}/{post['post_id']}/conversation",
+        params={"fields": fields, "access_token": acc["token"]},
         timeout=15,
     )
     return {
         "ok": True,
         "data": {
             "post_id": post["post_id"],
-            "status_code": resp.status_code,
-            "raw": resp.json(),
+            "replies":      {"status": r1.status_code, "raw": r1.json()},
+            "conversation": {"status": r2.status_code, "raw": r2.json()},
         },
     }
 
