@@ -194,12 +194,16 @@ def _analyze_sentiment(comments: list[dict]) -> list[dict]:
 
 
 def _publish_reply(comment_id: str, reply_text: str, token: str, user_id: str) -> str | None:
-    resp = requests.post(
-        f"{THREADS_API_BASE}/{user_id}/threads",
-        params={"access_token": token},
-        json={"media_type": "TEXT", "text": reply_text, "reply_to_id": comment_id},
-        timeout=15,
-    )
+    try:
+        resp = requests.post(
+            f"{THREADS_API_BASE}/{user_id}/threads",
+            params={"access_token": token},
+            json={"media_type": "TEXT", "text": reply_text, "reply_to_id": comment_id},
+            timeout=30,
+        )
+    except Exception as e:
+        log.warning("create reply container timeout/error for %s: %s", comment_id, e)
+        return None
     if resp.status_code != 200:
         log.warning("create reply container failed for %s: %s", comment_id, resp.text[:200])
         return None
@@ -209,12 +213,16 @@ def _publish_reply(comment_id: str, reply_text: str, token: str, user_id: str) -
 
     time.sleep(PUBLISH_DELAY_SEC)
 
-    resp2 = requests.post(
-        f"{THREADS_API_BASE}/{user_id}/threads_publish",
-        params={"access_token": token},
-        json={"creation_id": container_id},
-        timeout=15,
-    )
+    try:
+        resp2 = requests.post(
+            f"{THREADS_API_BASE}/{user_id}/threads_publish",
+            params={"access_token": token},
+            json={"creation_id": container_id},
+            timeout=30,
+        )
+    except Exception as e:
+        log.warning("publish reply timeout/error for container %s: %s", container_id, e)
+        return None
     if resp2.status_code != 200:
         log.warning("publish reply failed for container %s: %s", container_id, resp2.text[:200])
         return None
