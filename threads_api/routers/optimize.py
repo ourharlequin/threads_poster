@@ -1,6 +1,7 @@
 import os
 import json
 import duckdb
+from collections import Counter, defaultdict
 from openai import OpenAI
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -68,7 +69,7 @@ def _fetch_posts(account_id: str, metric: str, limit: int, worst: bool) -> list[
         rows = conn.execute(
             f"""
             SELECT p.content, pi.views, pi.likes, pi.replies, pi.reposts, pi.quotes,
-                   ({score}) AS score
+                   ({score}) AS score, p.threads_post_id
             FROM posts p
             JOIN post_insights pi ON p.id = pi.post_id AND p.participant = pi.participant
             WHERE p.account_id = ? AND p.status = 'posted'
@@ -79,19 +80,59 @@ def _fetch_posts(account_id: str, metric: str, limit: int, worst: bool) -> list[
         ).fetchall()
     return [
         {"content": r[0], "views": r[1], "likes": r[2], "replies": r[3],
-         "reposts": r[4], "quotes": r[5], "score": round(r[6] or 0, 4)}
+         "reposts": r[4], "quotes": r[5], "score": round(r[6] or 0, 4),
+         "threads_post_id": r[7], "comments": {}}
         for r in rows
     ]
+
+
+def _fetch_comment_signals(db_path: str, account_id: str, post_ids: list[str]) -> dict[str, dict]:
+    """Returns {threads_post_id: {breakdown, notable}} from reply_log."""
+    if not post_ids:
+        return {}
+    placeholders = ", ".join(["?"] * len(post_ids))
+    try:
+        with duckdb.connect(db_path, read_only=True) as conn:
+            rows = conn.execute(
+                f"""
+                SELECT post_id, sentiment, comment_text
+                FROM reply_log
+                WHERE account_id = ?
+                  AND post_id IN ({placeholders})
+                  AND comment_text IS NOT NULL AND comment_text != ''
+                """,
+                [account_id] + post_ids,
+            ).fetchall()
+    except Exception:
+        return {}
+
+    by_post: dict[str, list] = defaultdict(list)
+    for post_id, sentiment, text in rows:
+        by_post[post_id].append((sentiment or "unclassified", text))
+
+    result = {}
+    for post_id, items in by_post.items():
+        breakdown = dict(Counter(s for s, _ in items))
+        notable = [t for s, t in items if s in ("negative", "question")][:3]
+        result[post_id] = {"breakdown": breakdown, "notable": notable}
+    return result
 
 
 def _fmt_posts(posts: list[dict]) -> str:
     parts = []
     for i, p in enumerate(posts, 1):
-        parts.append(
+        lines = [
             f"{i}. score={p['score']} | views={p['views']} likes={p['likes']} "
-            f"replies={p['replies']} reposts={p['reposts']} quotes={p['quotes']}\n"
-            f"   {p['content'][:300]}"
-        )
+            f"replies={p['replies']} reposts={p['reposts']} quotes={p['quotes']}",
+            f"   {p['content'][:300]}",
+        ]
+        c = p.get("comments", {})
+        if c.get("breakdown"):
+            bd = ", ".join(f"{k}={v}" for k, v in c["breakdown"].items())
+            lines.append(f"   Comments: {bd}")
+        for note in c.get("notable", []):
+            lines.append(f"   ↳ {note[:150]}")
+        parts.append("\n".join(lines))
     return "\n\n".join(parts)
 
 
@@ -109,9 +150,13 @@ def _call_groq(account_id: str, metric: str, accounts: dict, top: list, worst: l
     system_prompt = (
         "You are an expert at analyzing social media performance and writing AI prompt instructions.\n"
         "Analyze top vs worst posts, identify patterns, suggest improved prompt formats.\n"
+        "Use BOTH engagement metrics AND comment sentiment as signals:\n"
+        "- Negative comments reveal factual errors, clickbait, or unclear claims to avoid.\n"
+        "- Questions reveal vague or misleading phrasing that needs to be more specific.\n"
+        "- Positive comments reveal emotional hooks and topics that resonate.\n"
         "PRIMARY focus: improve 'formats' entries. Change 'system' only if clearly needed.\n"
         "Return ONLY valid JSON (no markdown) with these keys:\n"
-        '- "analysis": string (2-3 sentences on what works vs what doesn\'t)\n'
+        '- "analysis": string (2-3 sentences on what works vs what doesn\'t, referencing comment patterns)\n'
         '- "new_formats": dict of format_name -> improved instruction string\n'
         '- "new_system": string OR null\n'
         '- "reasoning": string (why these changes)'
@@ -158,6 +203,10 @@ def analyze_prompts(account_id: str, metric: str = "weighted"):
     worst = _fetch_posts(account_id, metric, limit=10, worst=True)
     if len(top) < 3:
         raise HTTPException(422, f"Not enough data for '{account_id}' — need at least 3 posted+insights rows")
+    post_ids = [p["threads_post_id"] for p in top + worst if p.get("threads_post_id")]
+    signals = _fetch_comment_signals(acc["db_path"], account_id, post_ids)
+    for p in top + worst:
+        p["comments"] = signals.get(p.get("threads_post_id"), {})
     suggestion = _call_groq(account_id, metric, accounts, top, worst)
     return {"ok": True, "data": {"account_id": account_id, "metric": metric, "suggestion": suggestion}}
 
