@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import registry
-from routers import analytics, content, publishing, system, superset, optimize, chat
+from routers import analytics, content, publishing, system, superset, optimize, chat, replies
 
 
 @asynccontextmanager
@@ -19,3 +19,4 @@ app.include_router(system.router,     prefix="/system",     tags=["system"])
 app.include_router(superset.router,   prefix="/superset",   tags=["superset"])
 app.include_router(optimize.router,   prefix="/optimize",   tags=["optimize"])
 app.include_router(chat.router,       tags=["chat"])
+app.include_router(replies.router,    prefix="/replies",    tags=["replies"])
