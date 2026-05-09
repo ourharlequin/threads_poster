@@ -101,7 +101,7 @@ def reply_all():
     log.info(f"Reply worker: обрабатываю {len(accounts)} аккаунтов")
     for acc_id in accounts:
         try:
-            r = requests.get(f"{THREADS_API_BASE}/replies/fetch/{acc_id}", params={"days": 2}, timeout=60)
+            r = requests.get(f"{THREADS_API_BASE}/replies/fetch/{acc_id}", timeout=120)
             data = r.json().get("data", {})
             log.info(f"  {acc_id}: {data.get('new_comments', 0)} новых комментариев")
         except Exception as e:

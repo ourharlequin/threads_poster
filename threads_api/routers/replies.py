@@ -46,31 +46,37 @@ def _init_reply_log(db_path: str):
         """)
 
 
-def _get_recent_posts(db_path: str, account_id: str, days: int) -> list[dict]:
-    cutoff = datetime.utcnow() - timedelta(days=days)
+def _get_posts_with_replies(db_path: str, account_id: str) -> list[dict]:
+    """Возвращает только посты у которых есть хотя бы 1 reply по данным insights."""
     with duckdb.connect(db_path, read_only=True) as conn:
         rows = conn.execute("""
-            SELECT threads_post_id, content
-            FROM posts
-            WHERE account_id = ?
-              AND status = 'posted'
-              AND threads_post_id IS NOT NULL
-              AND posted_at >= ?
-            ORDER BY posted_at DESC
-        """, [account_id, cutoff]).fetchall()
+            SELECT p.threads_post_id, p.content
+            FROM posts p
+            JOIN post_insights pi ON pi.post_id = p.id
+            WHERE p.account_id = ?
+              AND p.threads_post_id IS NOT NULL
+              AND pi.replies > 0
+            GROUP BY p.threads_post_id, p.content
+            ORDER BY MAX(pi.replies) DESC
+        """, [account_id]).fetchall()
     return [{"post_id": r[0], "content": r[1]} for r in rows]
 
 
 def _fetch_thread_replies(post_id: str, token: str) -> list[dict]:
-    resp = requests.get(
-        f"{THREADS_API_BASE}/{post_id}/replies",
-        params={"fields": "id,text,username,timestamp", "access_token": token},
-        timeout=15,
-    )
-    if resp.status_code != 200:
-        log.warning("replies API error for %s: %s", post_id, resp.text[:200])
-        return []
-    return resp.json().get("data", [])
+    """Скачивает все комментарии через /conversation с поддержкой пагинации."""
+    results = []
+    params = {"fields": "id,text,username,timestamp", "access_token": token}
+    url = f"{THREADS_API_BASE}/{post_id}/conversation"
+    while url:
+        resp = requests.get(url, params=params, timeout=15)
+        if resp.status_code != 200:
+            log.warning("conversation API error for %s: %s", post_id, resp.text[:200])
+            break
+        body = resp.json()
+        results.extend(body.get("data", []))
+        url = body.get("paging", {}).get("next")
+        params = {}  # next URL уже содержит все параметры
+    return results
 
 
 def _existing_comment_ids(db_path: str, account_id: str) -> set[str]:
@@ -266,11 +272,11 @@ def debug_replies(account_id: str):
 
 
 @router.get("/fetch/{account_id}")
-def fetch_replies(account_id: str, days: int = 7):
+def fetch_replies(account_id: str):
     """Скачать новые комментарии из Threads API и сохранить в reply_log."""
     acc = _get_account(account_id)
     _init_reply_log(acc["db_path"])
-    posts = _get_recent_posts(acc["db_path"], account_id, days)
+    posts = _get_posts_with_replies(acc["db_path"], account_id)
     if not posts:
         return {"ok": True, "data": {"new_comments": 0, "posts_checked": 0}}
 
