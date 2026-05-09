@@ -101,7 +101,7 @@ def _insert_comments(db_path: str, account_id: str, post_id: str,
     return len(new)
 
 
-def _get_unanswered(db_path: str, account_id: str) -> list[dict]:
+def _get_unanswered(db_path: str, account_id: str, limit: int = 10) -> list[dict]:
     with duckdb.connect(db_path, read_only=True) as conn:
         rows = conn.execute("""
             SELECT rl.id, rl.comment_id, rl.comment_text, rl.username, rl.post_id,
@@ -113,8 +113,8 @@ def _get_unanswered(db_path: str, account_id: str) -> list[dict]:
               AND rl.comment_text IS NOT NULL
               AND rl.comment_text != ''
             ORDER BY rl.fetched_at DESC
-            LIMIT 50
-        """, [account_id]).fetchall()
+            LIMIT ?
+        """, [account_id, limit]).fetchall()
     return [
         {
             "row_id": r[0], "comment_id": r[1], "comment_text": r[2],
@@ -353,11 +353,11 @@ def replies_sentiment(account_id: str, days: int = 30):
 
 
 @router.post("/auto-reply/{account_id}")
-def auto_reply(account_id: str):
-    """Сгенерировать и опубликовать ответы на все неотвеченные комментарии через Cerebras."""
+def auto_reply(account_id: str, limit: int = 10):
+    """Сгенерировать и опубликовать ответы на неотвеченные комментарии (до limit за раз)."""
     acc = _get_account(account_id)
     _init_reply_log(acc["db_path"])
-    unanswered = _get_unanswered(acc["db_path"], account_id)
+    unanswered = _get_unanswered(acc["db_path"], account_id, limit)
     if not unanswered:
         return {"ok": True, "data": {"replied": 0, "message": "No unanswered comments"}}
 
