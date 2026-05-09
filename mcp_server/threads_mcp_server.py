@@ -180,5 +180,25 @@ def threads_superset_rebuild() -> dict:
     return _post("/superset/rebuild", timeout=60)
 
 
+# ── Комментарии ───────────────────────────────────────────────────────────────
+
+@mcp.tool()
+def threads_fetch_replies(account_id: str, days: int = 7) -> dict:
+    """Скачать новые комментарии к постам аккаунта из Threads API и сохранить в reply_log."""
+    return _get(f"/replies/fetch/{account_id}", days=days)
+
+
+@mcp.tool()
+def threads_replies_sentiment(account_id: str, days: int = 30) -> dict:
+    """Анализ тональности комментариев аккаунта за период (positive/negative/question/neutral) через Cerebras."""
+    return _get(f"/replies/sentiment/{account_id}", days=days)
+
+
+@mcp.tool()
+def threads_auto_reply(account_id: str) -> dict:
+    """Сгенерировать и опубликовать ответы на все неотвеченные комментарии через Cerebras. Полный автопилот."""
+    return _post(f"/replies/auto-reply/{account_id}", timeout=300)
+
+
 if __name__ == "__main__":
     mcp.run()
