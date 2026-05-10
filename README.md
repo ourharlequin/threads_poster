@@ -1,6 +1,6 @@
 # Threads Auto-Poster
 
-Multi-account automated content generation and publishing system for Meta Threads. Generates posts via Cerebras API (llama3.1-8b), publishes them on a schedule via Meta Graph API, and exposes a REST API + MCP server for management through Claude.
+Multi-account automated content generation and publishing system for Meta Threads. Generates posts via Cerebras API (llama3.1-8b), publishes them on a schedule via Meta Graph API, and exposes a REST API + MCP server for management through Claude. Replies to comments automatically via HuggingFace (Qwen2.5-72B). Prompt optimization uses post performance data + comment sentiment to improve per-account prompts.
 
 ---
 
@@ -39,9 +39,9 @@ threads_api  (Docker, port 7843)
 ## Participants & Accounts
 
 ### Budimir (6 accounts) — active
-### Tanya (6 accounts) — active
 ### Slava (6 accounts) — active
-### Chiara (6 accounts) — active
+### Tanya (6 accounts) — blocked (containers stopped)
+### Chiara (6 accounts) — configured, containers not started yet
 
 ---
 
@@ -72,8 +72,10 @@ threads_poster/
       publishing.py            — force, status, fetch-insights
       system.py                — health, token-expiry, refresh-tokens, logs, accounts
       superset.py              — status, merger-run, rebuild
+      replies.py               — fetch comments, sentiment analysis, auto-reply, debug
+      optimize.py              — read prompts, analyze top/worst posts, apply prompt changes
   mcp_server/
-    threads_mcp_server.py      — 21 @mcp.tool() via FastMCP + httpx
+    threads_mcp_server.py      — 27 @mcp.tool() via FastMCP + httpx
   superset/
     Dockerfile
     Dockerfile.merger
@@ -97,11 +99,25 @@ threads_poster/
 | `post_insights` | Post metric snapshots (views/likes/replies/reposts/quotes), written daily for 7 days after publish |
 | `account_insights` | Daily account metrics + followers_count (UPSERT by account_id + date) |
 
-`analytics.duckdb` has the same three tables with an added `participant` column (budimir / tanya / slava).
+`analytics.duckdb` has the same three tables with an added `participant` column (budimir / slava / tanya / chiara).
+
+**reply_log** (per-participant `data.duckdb`):
+
+| Column | Type | Description |
+|---|---|---|
+| `account_id` | VARCHAR | Account that received the comment |
+| `post_id` | VARCHAR | Threads post ID |
+| `comment_id` | VARCHAR | Threads comment ID (unique) |
+| `username` | VARCHAR | Commenter's username |
+| `comment_text` | TEXT | Comment content |
+| `reply_id` | VARCHAR | Published reply ID (null = unanswered) |
+| `sentiment` | VARCHAR | positive / negative / question / neutral |
+| `fetched_at` | TIMESTAMPTZ | When comment was fetched |
+| `replied_at` | TIMESTAMPTZ | When reply was published |
 
 ---
 
-## HTTP API (21 endpoints)
+## HTTP API (28 endpoints)
 
 ### Analytics `GET /analytics/...`
 
@@ -149,9 +165,26 @@ threads_poster/
 | POST | `/superset/merger-run` | Force merger run via docker exec |
 | POST | `/superset/rebuild` | Recreate charts and dashboard via Superset REST API |
 
+### Replies `/replies/...`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/replies/fetch/{account_id}` | Fetch new comments from Threads API and save to reply_log |
+| GET | `/replies/sentiment/{account_id}` | Classify comment sentiment (positive/negative/question/neutral) via Qwen2.5-72B |
+| POST | `/replies/auto-reply/{account_id}` | Generate and publish replies to unanswered comments (`limit=10`) |
+| GET | `/replies/debug/{account_id}` | Compare /replies vs /conversation API for the most-replied post |
+
+### Optimize `/optimize/...`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/optimize/prompts/{participant}` | Read current prompts.py from the server for a participant |
+| GET | `/optimize/analyze/{account_id}` | Analyze top/worst posts and suggest prompt improvements via Qwen2.5-72B |
+| POST | `/optimize/apply/{account_id}` | Write suggested prompt changes to prompts.py on the server |
+
 ---
 
-## MCP Tools (21)
+## MCP Tools (27)
 
 ```python
 # Analytics
@@ -184,6 +217,16 @@ threads_list_accounts()
 threads_superset_status()
 threads_merger_run()
 threads_superset_rebuild()
+
+# Replies (auto-reply pipeline, runs 5×/day via scheduler: 09–21 Belgrade)
+threads_fetch_replies(account_id, days)       # fetch new comments into reply_log
+threads_replies_sentiment(account_id, days)   # classify sentiment via Qwen2.5-72B
+threads_auto_reply(account_id)                # generate + publish replies (max 10/run)
+
+# Prompt Optimization
+threads_get_prompts(participant)              # read prompts.py from server
+threads_analyze_prompts(account_id, metric)  # suggest improvements based on top/worst posts
+threads_apply_prompts(account_id, new_formats, new_system)  # write changes to prompts.py
 ```
 
 ---
