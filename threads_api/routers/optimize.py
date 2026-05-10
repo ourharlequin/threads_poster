@@ -189,6 +189,19 @@ def _call_groq(account_id: str, metric: str, accounts: dict, top: list, worst: l
     return json.loads(text[start:end + 1])
 
 
+@router.get("/prompts/{participant}")
+def get_prompts(participant: str):
+    """Вернуть содержимое prompts.py для участника."""
+    if participant not in registry.PARTICIPANTS:
+        raise HTTPException(404, f"Participant '{participant}' not found. Available: {list(registry.PARTICIPANTS.keys())}")
+    scripts_dir = registry.PARTICIPANTS[participant]["scripts_dir"]
+    try:
+        accounts = _load_prompts(scripts_dir)
+    except FileNotFoundError:
+        raise HTTPException(404, f"prompts.py not found for participant '{participant}'")
+    return {"ok": True, "data": {"participant": participant, "accounts": accounts}}
+
+
 @router.get("/analyze/{account_id}")
 def analyze_prompts(account_id: str, metric: str = "weighted"):
     """Анализ топ/худших постов и предложение улучшений промптов через Cerebras."""

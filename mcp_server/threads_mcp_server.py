@@ -149,6 +149,12 @@ def threads_list_accounts() -> dict:
 # ── Оптимизация промптов ──────────────────────────────────────────────────────
 
 @mcp.tool()
+def threads_get_prompts(participant: str) -> dict:
+    """Прочитать prompts.py с сервера для участника (budimir, slava, tanya и т.д.). Возвращает ACCOUNTS dict."""
+    return _get("/optimize/prompts/" + participant)
+
+
+@mcp.tool()
 def threads_analyze_prompts(account_id: str, metric: str = "weighted") -> dict:
     """Анализ топ/худших постов и предложение улучшений промптов через Claude. metric: 'weighted' (views×0.4 + engagement×0.6) или 'rate' (engagement/views)."""
     return _get("/optimize/analyze/" + account_id, metric=metric)
