@@ -50,6 +50,24 @@ def init_db():
         """)
 
 
+MAX_CHARS = 500  # Threads API limit
+
+
+def truncate_to_limit(text: str, limit: int = MAX_CHARS) -> str:
+    """Truncate to last complete sentence within limit, or hard-cut at word boundary."""
+    if len(text) <= limit:
+        return text
+    chunk = text[:limit]
+    # find last sentence boundary
+    for sep in (".", "!", "?"):
+        pos = chunk.rfind(sep)
+        if pos > 0:
+            return chunk[: pos + 1].strip()
+    # fallback: last word boundary
+    pos = chunk.rfind(" ")
+    return (chunk[:pos] if pos > 0 else chunk).strip()
+
+
 def generate_post(client: Cerebras, fmt_name: str, fmt_prompt: str, system_prompt: str) -> str | None:
     for attempt in range(1, MAX_RETRIES + 1):
         try:
@@ -117,6 +135,7 @@ def main():
             if not content:
                 failed += 1
             else:
+                content = truncate_to_limit(content)
                 conn.execute(
                     """
                     INSERT INTO posts (account_id, content, status, created_at)
