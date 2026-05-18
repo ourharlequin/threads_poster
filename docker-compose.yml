@@ -12,6 +12,7 @@ services:
       - SUPERSET_ADMIN_USER=${SUPERSET_ADMIN_USER:-admin}
       - SUPERSET_ADMIN_PASSWORD=${SUPERSET_ADMIN_PASSWORD:-admin}
       - HF_TOKEN=${HF_TOKEN}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
 
     volumes:
       - ./Budimir:/app/participants/budimir
