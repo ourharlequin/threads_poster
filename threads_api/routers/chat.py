@@ -1,5 +1,6 @@
 import os
 import json
+import asyncio
 import anthropic
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -121,46 +122,55 @@ async def _stream(req: ChatRequest):
         tool_uses = []
         current_block = None
 
-        try:
-            async with client.messages.stream(
-                model="claude-haiku-4-5-20251001",
-                max_tokens=2048,
-                system=_SYSTEM,
-                messages=messages,
-                tools=_TOOLS,
-            ) as stream:
-                async for event in stream:
-                    t = event.type
-                    if t == "content_block_start":
-                        b = event.content_block
-                        if b.type == "tool_use":
-                            current_block = {"id": b.id, "name": b.name, "input_json": ""}
-                            yield f"data: {json.dumps({'type': 'tool', 'name': b.name})}\n\n"
-                        else:
+        for attempt in range(3):
+            try:
+                async with client.messages.stream(
+                    model="claude-haiku-4-5-20251001",
+                    max_tokens=2048,
+                    system=_SYSTEM,
+                    messages=messages,
+                    tools=_TOOLS,
+                ) as stream:
+                    async for event in stream:
+                        t = event.type
+                        if t == "content_block_start":
+                            b = event.content_block
+                            if b.type == "tool_use":
+                                current_block = {"id": b.id, "name": b.name, "input_json": ""}
+                                yield f"data: {json.dumps({'type': 'tool', 'name': b.name})}\n\n"
+                            else:
+                                current_block = None
+                        elif t == "content_block_delta":
+                            d = event.delta
+                            if d.type == "text_delta":
+                                full_text += d.text
+                                yield f"data: {json.dumps({'type': 'text', 'text': d.text})}\n\n"
+                            elif d.type == "input_json_delta" and current_block:
+                                current_block["input_json"] += d.partial_json
+                        elif t == "content_block_stop" and current_block:
+                            try:
+                                current_block["input"] = json.loads(current_block["input_json"] or "{}")
+                            except json.JSONDecodeError:
+                                current_block["input"] = {}
+                            tool_uses.append(current_block)
                             current_block = None
-                    elif t == "content_block_delta":
-                        d = event.delta
-                        if d.type == "text_delta":
-                            full_text += d.text
-                            yield f"data: {json.dumps({'type': 'text', 'text': d.text})}\n\n"
-                        elif d.type == "input_json_delta" and current_block:
-                            current_block["input_json"] += d.partial_json
-                    elif t == "content_block_stop" and current_block:
-                        try:
-                            current_block["input"] = json.loads(current_block["input_json"] or "{}")
-                        except json.JSONDecodeError:
-                            current_block["input"] = {}
-                        tool_uses.append(current_block)
-                        current_block = None
-        except anthropic.APIStatusError as e:
-            msg = e.body.get("error", {}).get("message", str(e)) if isinstance(e.body, dict) else str(e)
-            yield f"data: {json.dumps({'type': 'text', 'text': f'⚠️ {msg}. Please try again.'})}\n\n"
-            yield f"data: {json.dumps({'type': 'done', 'history': req.history})}\n\n"
-            break
-        except Exception as e:
-            yield f"data: {json.dumps({'type': 'text', 'text': 'An error occurred. Please try again.'})}\n\n"
-            yield f"data: {json.dumps({'type': 'done', 'history': req.history})}\n\n"
-            break
+                break  # success
+            except anthropic.APIStatusError as e:
+                is_overloaded = getattr(e, "status_code", None) == 529
+                if is_overloaded and attempt < 2:
+                    await asyncio.sleep(2 ** attempt)
+                    full_text = ""
+                    tool_uses = []
+                    current_block = None
+                    continue
+                msg = e.body.get("error", {}).get("message", str(e)) if isinstance(e.body, dict) else str(e)
+                yield f"data: {json.dumps({'type': 'text', 'text': f'⚠️ {msg}. Please try again.'})}\n\n"
+                yield f"data: {json.dumps({'type': 'done', 'history': req.history})}\n\n"
+                return
+            except Exception as e:
+                yield f"data: {json.dumps({'type': 'text', 'text': 'An error occurred. Please try again.'})}\n\n"
+                yield f"data: {json.dumps({'type': 'done', 'history': req.history})}\n\n"
+                return
 
         if tool_uses:
             assistant_content = []
