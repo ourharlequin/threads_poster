@@ -208,9 +208,6 @@ async def chat_stream(req: ChatRequest):
     return StreamingResponse(_stream(req), media_type="text/event-stream")
 
 
-@router.get("/")
-def landing():
-    return HTMLResponse(_HTML)
 
 
 _HTML = """<!DOCTYPE html>
