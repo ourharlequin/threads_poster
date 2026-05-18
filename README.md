@@ -1,14 +1,15 @@
 # Threads Auto-Poster
 
-Multi-account automated content generation and publishing system for Meta Threads. Generates posts via Cerebras API (llama3.1-8b), publishes them on a schedule via Meta Graph API, and exposes a REST API + MCP server for management through Claude. Replies to comments automatically via HuggingFace (Qwen2.5-72B). Prompt optimization uses post performance data + comment sentiment to improve per-account prompts.
+Multi-account automated content generation and publishing system for Meta Threads. Generates posts via Cerebras API (llama3.1-8b), publishes them on a schedule via Meta Graph API, and exposes a REST API + MCP server for management through Claude. Analytics chat uses Anthropic Claude Haiku (claude-haiku-4-5). Replies to comments and prompt optimization use HuggingFace (Qwen2.5-72B).
 
 ---
 
 ## Architecture
 
 ```
-HuggingFace (Qwen2.5-72B) ← chat & prompt optimization
-Cerebras (llama3.1-8b)    ← generate_posts.py --account <id> --count N
+Anthropic (claude-haiku-4-5) ← analytics chat (chat.py)
+HuggingFace (Qwen2.5-72B)   ← auto-replies & prompt optimization
+Cerebras (llama3.1-8b)       ← generate_posts.py --account <id> --count N
                                 ↓
                      DuckDB (data/data.duckdb) — posts table (status: pending)
                                 ↓
@@ -40,7 +41,9 @@ threads_api  (Docker, port 7843)
 
 ### Budimir (6 accounts) — active
 ### Slava (6 accounts) — active
-### Tanya (6 accounts) — blocked (containers stopped)
+### Tanya (2 accounts active) — active
+- `nehochu_neznau` — corporate accountability, Russian
+- `pao.e.mar` — Rio de Janeiro lifestyle (cafes, restaurants, hidden spots, festivals), Brazilian Portuguese
 ### Chiara (6 accounts) — configured, containers not started yet
 
 ---
@@ -73,9 +76,11 @@ threads_poster/
       system.py                — health, token-expiry, refresh-tokens, logs, accounts
       superset.py              — status, merger-run, rebuild
       replies.py               — fetch comments, sentiment analysis, auto-reply, debug
-      optimize.py              — read prompts, analyze top/worst posts, apply prompt changes
+      optimize.py              — read prompts, analyze top/worst posts, apply/create prompt configs
+      landing.py               — GET /landing — static HTML landing page
   mcp_server/
     threads_mcp_server.py      — 27 @mcp.tool() via FastMCP + httpx
+  .mcp.json                    — MCP server config for Claude Code (local dev)
   superset/
     Dockerfile
     Dockerfile.merger
@@ -180,7 +185,7 @@ threads_poster/
 |--------|------|-------------|
 | GET | `/optimize/prompts/{participant}` | Read current prompts.py from the server for a participant |
 | GET | `/optimize/analyze/{account_id}` | Analyze top/worst posts and suggest prompt improvements via Qwen2.5-72B |
-| POST | `/optimize/apply/{account_id}` | Write suggested prompt changes to prompts.py on the server |
+| POST | `/optimize/apply/{account_id}` | Write prompt changes to prompts.py on the server; creates account entry if it doesn't exist yet |
 
 ---
 
@@ -272,7 +277,16 @@ ACCOUNT_N_ID=
 ACCOUNT_N_USER_ID=
 ACCOUNT_N_THREADS_TOKEN=     # 60-day long-lived token
 CEREBRAS_API_KEY=
-HF_TOKEN=                    # HuggingFace token for chat/optimize
+HF_TOKEN=                    # HuggingFace token for auto-replies & prompt optimization
+SUPERSET_SECRET_KEY=
+```
+
+**Project root `.env` (read by `docker-compose.yml`):**
+```env
+ANTHROPIC_API_KEY=           # Claude Haiku for analytics chat
+HF_TOKEN=
+SUPERSET_ADMIN_USER=
+SUPERSET_ADMIN_PASSWORD=
 SUPERSET_SECRET_KEY=
 ```
 
