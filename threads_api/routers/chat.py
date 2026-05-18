@@ -129,58 +129,61 @@ async def _stream(req: ChatRequest):
     )
 
     while True:
-        # Non-streaming call with tools to avoid Groq streaming+tools bug
-        response = client.chat.completions.create(
+        tool_calls_acc: dict[int, dict] = {}
+        full_text = ""
+
+        stream = client.chat.completions.create(
             model="Qwen/Qwen2.5-72B-Instruct",
             messages=messages,
             tools=_TOOLS,
             tool_choice="auto",
             max_tokens=2048,
+            stream=True,
         )
-        choice = response.choices[0]
+        for chunk in stream:
+            if not chunk.choices:
+                continue
+            delta = chunk.choices[0].delta
 
-        if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
-            tool_calls = choice.message.tool_calls
+            if delta.tool_calls:
+                for tc_delta in delta.tool_calls:
+                    idx = tc_delta.index
+                    if idx not in tool_calls_acc:
+                        tool_calls_acc[idx] = {"id": tc_delta.id, "name": tc_delta.function.name or "", "arguments": ""}
+                        if tc_delta.function.name:
+                            yield f"data: {json.dumps({'type': 'tool', 'name': tc_delta.function.name})}\n\n"
+                    if tc_delta.function.arguments:
+                        tool_calls_acc[idx]["arguments"] += tc_delta.function.arguments
+
+            if delta.content:
+                full_text += delta.content
+                yield f"data: {json.dumps({'type': 'text', 'text': delta.content})}\n\n"
+
+        if tool_calls_acc:
+            tool_calls_list = [tool_calls_acc[i] for i in sorted(tool_calls_acc)]
             messages.append({
                 "role": "assistant",
                 "tool_calls": [
                     {
-                        "id": tc.id,
+                        "id": tc["id"],
                         "type": "function",
-                        "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                        "function": {"name": tc["name"], "arguments": tc["arguments"]},
                     }
-                    for tc in tool_calls
+                    for tc in tool_calls_list
                 ],
             })
-            for tc in tool_calls:
-                yield f"data: {json.dumps({'type': 'tool', 'name': tc.function.name})}\n\n"
+            for tc in tool_calls_list:
                 try:
-                    inp = json.loads(tc.function.arguments or "{}")
+                    inp = json.loads(tc["arguments"] or "{}")
                 except json.JSONDecodeError:
                     inp = {}
-                result = _call_tool(tc.function.name, inp)
+                result = _call_tool(tc["name"], inp)
                 messages.append({
                     "role": "tool",
-                    "tool_call_id": tc.id,
+                    "tool_call_id": tc["id"],
                     "content": json.dumps(result, ensure_ascii=False),
                 })
         else:
-            # Stream the final text response
-            full_text = ""
-            stream = client.chat.completions.create(
-                model="Qwen/Qwen2.5-72B-Instruct",
-                messages=messages,
-                max_tokens=2048,
-                stream=True,
-            )
-            for chunk in stream:
-                if not chunk.choices:
-                    continue
-                delta = chunk.choices[0].delta
-                if delta.content:
-                    full_text += delta.content
-                    yield f"data: {json.dumps({'type': 'text', 'text': delta.content})}\n\n"
-
             new_history = req.history + [
                 {"role": "user", "content": req.message},
                 {"role": "assistant", "content": full_text},
