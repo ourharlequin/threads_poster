@@ -85,13 +85,23 @@ def _call_tool(name: str, inp: dict) -> dict:
         if name == "list_accounts":
             return list_accounts()
         elif name == "top_posts":
-            return top_posts(**inp)
+            return top_posts(
+                limit=inp.get("limit", 10),
+                days=inp.get("days", 30),
+                participant=inp.get("participant"),
+            )
         elif name == "follower_growth":
-            return followers(**inp)
+            return followers(
+                account_id=inp["account_id"],
+                days=inp.get("days", 30),
+            )
         elif name == "account_stats":
-            return account_stats(**inp)
+            return account_stats(
+                account_id=inp["account_id"],
+                days=inp.get("days", 7),
+            )
         elif name == "compare":
-            return compare(**inp)
+            return compare(days=inp.get("days", 7))
         return {"error": f"unknown tool: {name}"}
     except Exception as e:
         return {"error": str(e)}
