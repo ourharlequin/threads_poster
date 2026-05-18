@@ -1,6 +1,6 @@
 import os
 import json
-from openai import OpenAI
+import anthropic
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
@@ -18,84 +18,66 @@ Reply in the same language the user writes in.\
 
 _TOOLS = [
     {
-        "type": "function",
-        "function": {
-            "name": "list_accounts",
-            "description": "Список всех аккаунтов с участниками",
-            "parameters": {"type": "object", "properties": {}, "required": []},
+        "name": "list_accounts",
+        "description": "Список всех аккаунтов с участниками",
+        "input_schema": {"type": "object", "properties": {}, "required": []},
+    },
+    {
+        "name": "top_posts",
+        "description": "Топ постов по просмотрам",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "limit": {"type": "integer"},
+                "days": {"type": "integer"},
+                "participant": {"type": "string", "description": "budimir, slava или tanya"},
+            },
+            "required": [],
         },
     },
     {
-        "type": "function",
-        "function": {
-            "name": "top_posts",
-            "description": "Топ постов по просмотрам",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "limit": {"type": "integer", "default": 10},
-                    "days": {"type": "integer", "default": 30},
-                    "participant": {"type": "string", "description": "budimir, slava или tanya"},
-                },
-                "required": [],
+        "name": "follower_growth",
+        "description": "Динамика фолловеров аккаунта",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "account_id": {"type": "string"},
+                "days": {"type": "integer"},
             },
+            "required": ["account_id"],
         },
     },
     {
-        "type": "function",
-        "function": {
-            "name": "follower_growth",
-            "description": "Динамика фолловеров аккаунта",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "account_id": {"type": "string"},
-                    "days": {"type": "integer", "default": 30},
-                },
-                "required": ["account_id"],
+        "name": "account_stats",
+        "description": "Сводная статистика аккаунта: просмотры, лайки, фолловеры",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "account_id": {"type": "string"},
+                "days": {"type": "integer"},
             },
+            "required": ["account_id"],
         },
     },
     {
-        "type": "function",
-        "function": {
-            "name": "account_stats",
-            "description": "Сводная статистика аккаунта: просмотры, лайки, фолловеры",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "account_id": {"type": "string"},
-                    "days": {"type": "integer", "default": 7},
-                },
-                "required": ["account_id"],
+        "name": "compare",
+        "description": "Сравнение всех аккаунтов по просмотрам и вовлечённости",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "days": {"type": "integer"},
             },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "compare",
-            "description": "Сравнение всех аккаунтов по просмотрам и вовлечённости",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "days": {"type": "integer", "default": 7},
-                },
-                "required": [],
-            },
+            "required": [],
         },
     },
 ]
 
 
-def _get_client() -> OpenAI:
-    key = os.environ.get("HF_TOKEN", "")
+def _get_client() -> anthropic.AsyncAnthropic:
+    key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not key:
-        raise RuntimeError("HF_TOKEN not set")
-    return OpenAI(
-        base_url="https://router.huggingface.co/v1",
-        api_key=key,
-    )
+        raise RuntimeError("ANTHROPIC_API_KEY not set")
+    return anthropic.AsyncAnthropic(api_key=key)
 
 
 def _call_tool(name: str, inp: dict) -> dict:
@@ -122,65 +104,67 @@ class ChatRequest(BaseModel):
 
 async def _stream(req: ChatRequest):
     client = _get_client()
-    messages = (
-        [{"role": "system", "content": _SYSTEM}]
-        + req.history
-        + [{"role": "user", "content": req.message}]
-    )
+    messages = req.history + [{"role": "user", "content": req.message}]
 
     while True:
-        # Non-streaming call with tools to avoid HF streaming+tools buffering issue
-        response = client.chat.completions.create(
-            model="Qwen/Qwen2.5-72B-Instruct",
+        full_text = ""
+        tool_uses = []
+        current_block = None
+
+        async with client.messages.stream(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=2048,
+            system=_SYSTEM,
             messages=messages,
             tools=_TOOLS,
-            tool_choice="auto",
-            max_tokens=2048,
-        )
-        choice = response.choices[0]
+        ) as stream:
+            async for event in stream:
+                t = event.type
+                if t == "content_block_start":
+                    b = event.content_block
+                    if b.type == "tool_use":
+                        current_block = {"id": b.id, "name": b.name, "input_json": ""}
+                        yield f"data: {json.dumps({'type': 'tool', 'name': b.name})}\n\n"
+                    else:
+                        current_block = None
+                elif t == "content_block_delta":
+                    d = event.delta
+                    if d.type == "text_delta":
+                        full_text += d.text
+                        yield f"data: {json.dumps({'type': 'text', 'text': d.text})}\n\n"
+                    elif d.type == "input_json_delta" and current_block:
+                        current_block["input_json"] += d.partial_json
+                elif t == "content_block_stop" and current_block:
+                    try:
+                        current_block["input"] = json.loads(current_block["input_json"] or "{}")
+                    except json.JSONDecodeError:
+                        current_block["input"] = {}
+                    tool_uses.append(current_block)
+                    current_block = None
 
-        if choice.finish_reason == "tool_calls" and choice.message.tool_calls:
-            tool_calls = choice.message.tool_calls
-            messages.append({
-                "role": "assistant",
-                "tool_calls": [
-                    {
-                        "id": tc.id,
-                        "type": "function",
-                        "function": {"name": tc.function.name, "arguments": tc.function.arguments},
-                    }
-                    for tc in tool_calls
-                ],
-            })
-            for tc in tool_calls:
-                yield f"data: {json.dumps({'type': 'tool', 'name': tc.function.name})}\n\n"
-                try:
-                    inp = json.loads(tc.function.arguments or "{}")
-                except json.JSONDecodeError:
-                    inp = {}
-                result = _call_tool(tc.function.name, inp)
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc.id,
+        if tool_uses:
+            assistant_content = []
+            if full_text:
+                assistant_content.append({"type": "text", "text": full_text})
+            for tu in tool_uses:
+                assistant_content.append({
+                    "type": "tool_use",
+                    "id": tu["id"],
+                    "name": tu["name"],
+                    "input": tu["input"],
+                })
+            messages.append({"role": "assistant", "content": assistant_content})
+
+            tool_results = []
+            for tu in tool_uses:
+                result = _call_tool(tu["name"], tu["input"])
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": tu["id"],
                     "content": json.dumps(result, ensure_ascii=False),
                 })
+            messages.append({"role": "user", "content": tool_results})
         else:
-            # Stream the final text response
-            full_text = ""
-            stream = client.chat.completions.create(
-                model="Qwen/Qwen2.5-72B-Instruct",
-                messages=messages,
-                max_tokens=2048,
-                stream=True,
-            )
-            for chunk in stream:
-                if not chunk.choices:
-                    continue
-                delta = chunk.choices[0].delta
-                if delta.content:
-                    full_text += delta.content
-                    yield f"data: {json.dumps({'type': 'text', 'text': delta.content})}\n\n"
-
             new_history = req.history + [
                 {"role": "user", "content": req.message},
                 {"role": "assistant", "content": full_text},
