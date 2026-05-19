@@ -239,17 +239,20 @@ def apply_prompts(account_id: str, body: ApplyRequest):
         accounts = _load_prompts(acc["scripts_dir"])
     except FileNotFoundError:
         raise HTTPException(404, f"prompts.py not found for participant '{acc['participant']}'")
-    if account_id not in accounts:
-        raise HTTPException(404, f"Account '{account_id}' not found in prompts.py")
-    if body.new_system:
-        accounts[account_id]["system"] = body.new_system
-    if body.new_formats:
-        accounts[account_id]["formats"].update(body.new_formats)
+    created = account_id not in accounts
+    if created:
+        accounts[account_id] = {"system": body.new_system or "", "formats": body.new_formats or {}}
+    else:
+        if body.new_system:
+            accounts[account_id]["system"] = body.new_system
+        if body.new_formats:
+            accounts[account_id]["formats"].update(body.new_formats)
     _write_prompts(acc["scripts_dir"], accounts)
     return {
         "ok": True,
         "data": {
             "account_id": account_id,
+            "created": created,
             "system_updated": bool(body.new_system),
             "formats_updated": list(body.new_formats.keys()) if body.new_formats else [],
         },
