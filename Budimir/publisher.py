@@ -42,7 +42,7 @@ TYPING_DELAY_MAX_SEC = 5
 SKIP_PROBABILITY = 0.05
 
 THREADS_API_BASE = "https://graph.threads.net/v1.0"
-PUBLISH_DELAY_SEC = 5  # требование Threads API между созданием контейнера и публикацией
+PUBLISH_DELAY_SEC = 30  # Meta recommends 30s after container creation before publishing
 
 # ── Логирование ──────────────────────────────────────────────────────────────
 logging.basicConfig(

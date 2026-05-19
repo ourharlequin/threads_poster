@@ -3,6 +3,7 @@
 Использование: python generate_posts.py --account event_parsing
 """
 
+import json
 import os
 import sys
 import argparse
@@ -19,7 +20,8 @@ from prompts import get_account_config
 
 load_dotenv()
 
-DB_PATH        = os.getenv("DB_PATH", "data/data.duckdb")
+DB_PATH         = os.getenv("DB_PATH", "data/data.duckdb")
+REDDIT_DB_PATH  = os.getenv("REDDIT_DB_PATH", "../reddit_trends/data/reddit.duckdb")
 MODEL          = "llama3.1-8b"
 POSTS_COUNT    = 30
 REQUEST_DELAY  = 3.0   # секунды между запросами
@@ -31,6 +33,19 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s: %(message)s",
 )
 log = logging.getLogger("generator")
+
+
+def _load_reddit_topics(group: str, lang: str) -> list[dict]:
+    from datetime import date
+    try:
+        with duckdb.connect(REDDIT_DB_PATH, read_only=True) as conn:
+            row = conn.execute(
+                "SELECT topics FROM daily_topics WHERE date = ? AND account_group = ? AND lang = ?",
+                [date.today(), group, lang],
+            ).fetchone()
+        return json.loads(row[0]) if row else []
+    except Exception:
+        return []
 
 
 def init_db():
@@ -119,6 +134,24 @@ def main():
     system_prompt = config["system"]
     formats       = config["formats"]
 
+    from reddit_trends_config import ACCOUNTS as REDDIT_ACCOUNTS
+    acc_reddit = REDDIT_ACCOUNTS.get(account_id)
+    topics_context = ""
+    if acc_reddit:
+        topics = _load_reddit_topics(acc_reddit["group"], acc_reddit["lang"])
+        if topics:
+            lines = ["\n\nToday's material (optional inspiration, don't mention Reddit, don't copy verbatim):"]
+            for t in topics:
+                lines.append(f"\n— {t.get('theme', '')}")
+                lines.append(f"  Tension: {t.get('tension', '')}")
+                lines.append(f"  Hook: {t.get('hook', '')}")
+            topics_context = "\n".join(lines)
+            log.info(f"Темы дня [{acc_reddit['group']}/{acc_reddit['lang']}]: {[t.get('theme') for t in topics]}")
+        else:
+            log.info(f"Тем дня нет [{acc_reddit['group']}/{acc_reddit['lang']}], генерирую без контекста")
+    else:
+        log.info(f"Аккаунт {account_id} не найден в reddit config — генерирую без контекста")
+
     client    = Cerebras(api_key=cerebras_key)
     fmt_names = list(formats.keys())
     generated = 0
@@ -128,7 +161,7 @@ def main():
         for i in range(count):
             fmt_name   = random.choice(fmt_names)
             fmt_prompt = formats[fmt_name]
-            content    = generate_post(client, fmt_name, fmt_prompt, system_prompt)
+            content    = generate_post(client, fmt_name, fmt_prompt + topics_context, system_prompt)
 
             if not content:
                 failed += 1

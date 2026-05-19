@@ -16,7 +16,7 @@ log = logging.getLogger("replies")
 
 THREADS_API_BASE = "https://graph.threads.net/v1.0"
 API_DELAY = 0.5
-PUBLISH_DELAY_SEC = 5
+PUBLISH_DELAY_SEC = 30
 BATCH_SIZE = 20
 
 

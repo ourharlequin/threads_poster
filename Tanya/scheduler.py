@@ -1,6 +1,7 @@
 """
-Планировщик для автоматизации четырёх задач:
+Планировщик для автоматизации пяти задач:
 - Сбор метрик:        каждый день в 05:00 по Белграду
+- Reddit-темы:        каждый день в 07:30 по Белграду
 - Генерация постов:   каждый день в 08:00 по Белграду (последовательно по аккаунтам)
 - Обновление токенов: каждые 58 дней в 08:00 по Белграду
 - Ответы на реплаи:   5 раз в день (09:00, 12:00, 15:00, 18:00, 21:00)
@@ -20,7 +21,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 INSIGHTS_AT = "05:00"
-RUN_AT = "08:00"
+REDDIT_AT   = "07:30"
+RUN_AT      = "08:00"
 REFRESH_EVERY_DAYS = 58
 REPLY_HOURS = ["09:00", "12:00", "15:00", "18:00", "21:00"]
 THREADS_API_BASE = os.getenv("THREADS_API_BASE", "http://host.docker.internal:7843")
@@ -82,6 +84,19 @@ def generate_all():
     log.info("Генерация завершена для всех аккаунтов")
 
 
+def fetch_reddit_trends():
+    log.info("Собираю темы дня из Reddit...")
+    script = os.path.join(os.path.dirname(__file__), '..', 'reddit_trends', 'reddit_trends.py')
+    result = subprocess.run(
+        [sys.executable, script],
+        capture_output=False,
+    )
+    if result.returncode != 0:
+        log.error(f"❌ Ошибка сбора Reddit-тем (код {result.returncode})")
+    else:
+        log.info("✅ Reddit-темы собраны")
+
+
 def fetch_insights():
     log.info("Собираю метрики из Threads Insights API...")
     result = subprocess.run(
@@ -131,6 +146,7 @@ def main():
     accounts = load_account_ids()
     log.info(f"Планировщик запущен. Аккаунты: {accounts}")
     log.info(f"Сбор метрик    — каждый день в {INSIGHTS_AT} по Белграду")
+    log.info(f"Reddit-темы    — каждый день в {REDDIT_AT} по Белграду")
     log.info(f"Генерация      — каждый день в {RUN_AT} по Белграду")
     log.info(f"Обновление токенов — каждые {REFRESH_EVERY_DAYS} дней")
     log.info(f"Ответы на реплаи   — {', '.join(REPLY_HOURS)} по Белграду")
@@ -141,6 +157,7 @@ def main():
         generate_all()
 
     schedule.every().day.at(INSIGHTS_AT).do(fetch_insights)
+    schedule.every().day.at(REDDIT_AT).do(fetch_reddit_trends)
     schedule.every().day.at(RUN_AT).do(generate_all)
     schedule.every(REFRESH_EVERY_DAYS).days.at(RUN_AT).do(refresh_tokens)
     for t in REPLY_HOURS:
