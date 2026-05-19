@@ -98,10 +98,14 @@ def load_accounts() -> list[dict]:
             log.warning(f"Account {acc_id}: пропущен USER_ID или THREADS_TOKEN — skip")
             continue
 
+        daily_limit_str = os.getenv(f"ACCOUNT_{i}_DAILY_LIMIT")
+        daily_limit = int(daily_limit_str) if daily_limit_str else None
+
         accounts.append({
             "account_id": acc_id,
             "threads_user_id": user_id,
             "threads_token": threads_token,
+            "daily_limit": daily_limit,
         })
 
     return accounts
@@ -125,6 +129,17 @@ def get_next_pending_post(account_id: str) -> dict | None:
     if not row:
         return None
     return {"id": row[0], "content": row[1]}
+
+
+def count_posted_today(account_id: str) -> int:
+    """Считает посты со статусом 'posted' за сегодня по Belgrade-времени."""
+    today_start = datetime.now(TIMEZONE).replace(hour=0, minute=0, second=0, microsecond=0)
+    with DB_LOCK, duckdb.connect(DB_PATH) as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM posts WHERE account_id = ? AND status = 'posted' AND posted_at >= ?",
+            [account_id, today_start],
+        ).fetchone()
+    return row[0] if row else 0
 
 
 def update_post_status(post_id: int, status: str, threads_post_id: str | None = None):
@@ -213,8 +228,10 @@ def publisher_loop(account: dict):
     acc_id = account["account_id"]
     user_id = account["threads_user_id"]
     token = account["threads_token"]
+    daily_limit = account.get("daily_limit")
 
-    log.info(f"[{acc_id}] Стартую publisher loop")
+    log.info(f"[{acc_id}] Стартую publisher loop"
+             + (f" (лимит {daily_limit}/день)" if daily_limit else ""))
 
     while True:
         try:
@@ -227,11 +244,20 @@ def publisher_loop(account: dict):
                 time.sleep(wait_sec)
                 continue
 
-            # 2. Random skip
+            # 2. Проверка дневного лимита
+            if daily_limit is not None:
+                posted_today = count_posted_today(acc_id)
+                if posted_today >= daily_limit:
+                    wait_sec = seconds_until_window_opens(now)
+                    log.info(f"[{acc_id}] Дневной лимит достигнут ({posted_today}/{daily_limit}). Сплю до завтра.")
+                    time.sleep(wait_sec)
+                    continue
+
+            # 3. Random skip
             if random.random() < SKIP_PROBABILITY:
                 log.info(f"[{acc_id}] Random skip — пропускаю публикацию")
             else:
-                # 3. Берём пост
+                # 4. Берём пост
                 post = get_next_pending_post(acc_id)
                 if not post:
                     log.info(f"[{acc_id}] Нет pending постов. Жду 10 мин.")
