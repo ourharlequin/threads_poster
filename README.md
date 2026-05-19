@@ -7,19 +7,23 @@ Multi-account automated content generation and publishing system for Meta Thread
 ## Architecture
 
 ```
-Anthropic (claude-haiku-4-5) ← analytics chat (chat.py)
-HuggingFace (Qwen2.5-72B)   ← auto-replies & prompt optimization
-Cerebras (llama3.1-8b)       ← generate_posts.py --account <id> --count N
-                                ↓
-                     DuckDB (data/data.duckdb) — posts table (status: pending)
-                                ↓
-         publisher.py (per-account threads, window 9:00–21:00 Belgrade, 10–40 min intervals)
-                                ↓
-                     Threads API → published posts
-                                ↓
-         fetch_insights.py (05:00 Belgrade) → post_insights + account_insights
-                                ↓
-         merger.py (07:45 Belgrade) → data/analytics.duckdb → Superset :8088
+Reddit RSS (daily top posts)
+    ↓ 07:30 Belgrade — reddit_trends.py (Cerebras: extract 5 themes, translate)
+    ↓
+reddit_trends/data/reddit.duckdb  (shared across all participants)
+    ↓
+Cerebras (llama3.1-8b) ← generate_posts.py --account <id> --count N
+                           (Reddit themes injected as optional context)
+                            ↓
+                 DuckDB (data/data.duckdb) — posts table (status: pending)
+                            ↓
+     publisher.py (per-account threads, window 9:00–21:00 Belgrade, 10–40 min intervals)
+                            ↓
+                 Threads API → published posts
+                            ↓
+     fetch_insights.py (05:00 Belgrade) → post_insights + account_insights
+                            ↓
+     merger.py (07:45 Belgrade) → data/analytics.duckdb → Superset :8088
 ```
 
 **MCP layer:**
@@ -40,10 +44,19 @@ threads_api  (Docker, port 7843)
 ## Participants & Accounts
 
 ### Budimir (6 accounts) — active
-### Slava (6 accounts) — active
-### Tanya (2 accounts active) — active
+- `event_parsing`, `budeschka`, `cycling_superhero`, `claude_space`, `aire.porteno`, `mind_the_tap`
+
+### Slava (4 accounts) — active
+- `saas.memo` — SaaS/startup culture, English
+- `slow.routes.in.head` — WFH, procrastination, remote work, Spanish
+- `giraffe.from.mobile` — midlife crisis humour, Russian
+- `tiger.on.remote` — student startup scene, Russian
+
+### Tanya (3 accounts) — active
 - `nehochu_neznau` — corporate accountability, Russian
-- `pao.e.mar` — Rio de Janeiro lifestyle (cafes, restaurants, hidden spots, festivals), Brazilian Portuguese
+- `pao.e.mar` — Rio de Janeiro lifestyle (cafes, restaurants, hidden spots), Brazilian Portuguese
+- `trick.trend` — fashion, jewelry, wine, culture, English
+
 ### Chiara (6 accounts) — configured, containers not started yet
 
 ---
@@ -53,17 +66,23 @@ threads_api  (Docker, port 7843)
 ```
 threads_poster/
   Budimir/                     — participant folder
-    prompts.py                 — system prompts and formats for all 6 accounts
+    prompts.py                 — system prompts (NOT in git — updated by optimizer on server)
     generate_posts.py          — post generation: --account <id> --count N, temp=0.9
-    publisher.py               — per-account publishing threads
-    scheduler.py               — insights 05:00, generation 08:00, token refresh every 58 days
+    publisher.py               — per-account publishing threads, PUBLISH_DELAY_SEC=30
+    scheduler.py               — insights 05:00, reddit 07:30, generation 08:00, token refresh every 58 days
     fetch_insights.py          — post-level and account-level metrics from Threads Insights API
     refresh_tokens.py          — token renewal (every 58 days via scheduler)
+    reddit_trends_config.py    — thin wrapper: imports ACCOUNTS/SUBREDDITS from reddit_trends/config.py
     test_publish.py            — force-publish one post without time window
     get_tokens.py              — OAuth helper for long-lived Threads tokens (all scopes)
+    docker-compose.yml         — budimir_publisher + budimir_scheduler (+ generator/refresher as tools)
     .env                       — credentials (never commit)
-  Tanya/                       — same structure
-  Slava/                       — same structure
+  Tanya/                       — same structure (scheduler: 4 tasks, no Reddit fetch)
+  Slava/                       — same structure (scheduler: 4 tasks, no Reddit fetch)
+  reddit_trends/
+    reddit_trends.py           — parses Reddit RSS → Cerebras (extract themes + translate) → DuckDB
+    config.py                  — SUBREDDITS groups + ACCOUNTS mapping (account → group + lang)
+    data/reddit.duckdb         — daily_topics table, shared across all participants
   threads_api/
     main.py                    — FastAPI app, lifespan, router mounting
     registry.py                — auto-discovery of /app/participants/, PARTICIPANTS + REGISTRY
@@ -77,7 +96,8 @@ threads_poster/
       superset.py              — status, merger-run, rebuild
       replies.py               — fetch comments, sentiment analysis, auto-reply, debug
       optimize.py              — read prompts, analyze top/worst posts, apply/create prompt configs
-      landing.py               — GET /landing — static HTML landing page
+      landing.py               — GET /landing — static HTML landing page with analytics chat
+      chat.py                  — streaming chat via Anthropic Claude Haiku with tool use
   mcp_server/
     threads_mcp_server.py      — 27 @mcp.tool() via FastMCP + httpx
   .mcp.json                    — MCP server config for Claude Code (local dev)
@@ -91,8 +111,47 @@ threads_poster/
     docker-init.sh             — entrypoint: init on first start → gunicorn
   data/
     analytics.duckdb           — merged DB (created by merger)
-  docker-compose.yml
+  docker-compose.yml           — threads_api, merger, superset, superset_redis
 ```
+
+---
+
+## Daily Schedule (Belgrade time)
+
+| Time | Task | Container |
+|------|------|-----------|
+| 05:00 | Collect Threads Insights metrics | all schedulers |
+| 07:30 | Fetch Reddit trends → extract 5 themes per group → translate | budimir_scheduler only |
+| 08:00 | Generate posts (30/account, with Reddit context if available) | all schedulers |
+| 09/12/15/18/21 | Fetch replies + auto-reply | all schedulers |
+| every 58 days | Refresh Threads tokens | all schedulers |
+| 07:45 | Merge participant DBs → analytics.duckdb | merger container |
+
+---
+
+## Reddit Trends Pipeline
+
+Each day `reddit_trends.py` runs once (via `budimir_scheduler`):
+
+1. **Fetch** top-of-day posts from Reddit RSS for each configured subreddit group
+2. **Extract** 5 themes per group via Cerebras llama3.1-8b (`theme` / `tension` / `hook`)
+3. **Translate** to needed languages (ru, es, pt) via Cerebras
+4. **Save** to `reddit_trends/data/reddit.duckdb` (`daily_topics` table, keyed by date + group + lang)
+
+At 08:00 `generate_posts.py` loads today's themes for the account's group and appends them to the format prompt as optional inspiration. Falls back gracefully if no data.
+
+**Account → group mapping** (`reddit_trends/config.py`):
+
+| Account | Group | Lang |
+|---------|-------|------|
+| `saas.memo` | startup | en |
+| `slow.routes.in.head` | remote_work | es |
+| `giraffe.from.mobile` | 30s | ru |
+| `tiger.on.remote` | 20s_student | ru |
+| `pao.e.mar` | rio_lifestyle | pt |
+| `trick.trend` | fashion_culture | en |
+| `cycling_superhero` | cycling | en |
+| `claude_space` | claude | ru |
 
 ---
 
@@ -119,6 +178,15 @@ threads_poster/
 | `sentiment` | VARCHAR | positive / negative / question / neutral |
 | `fetched_at` | TIMESTAMPTZ | When comment was fetched |
 | `replied_at` | TIMESTAMPTZ | When reply was published |
+
+**daily_topics** (`reddit_trends/data/reddit.duckdb`):
+
+| Column | Type | Description |
+|---|---|---|
+| `date` | DATE | Date of fetch |
+| `account_group` | VARCHAR | Group name (startup, remote_work, etc.) |
+| `lang` | VARCHAR | Language code (en / ru / es / pt) |
+| `topics` | TEXT | JSON array of 5 objects: theme / tension / hook |
 
 ---
 
@@ -265,6 +333,11 @@ Apache Superset 4.1.1 at **http://localhost:8088** — login `admin` / `admin`
 
 Container naming: `{participant}_publisher`, `{participant}_scheduler`
 
+**prompts.py** — not tracked in git (`*/prompts.py` in `.gitignore`). After `git pull` on the VPS, restore manually if deleted:
+```bash
+scp {Participant}/prompts.py root@23.26.0.184:/root/threads_poster/{Participant}/prompts.py
+```
+
 ---
 
 ## Environment Variables
@@ -276,6 +349,7 @@ META_APP_SECRET=
 ACCOUNT_N_ID=
 ACCOUNT_N_USER_ID=
 ACCOUNT_N_THREADS_TOKEN=     # 60-day long-lived token
+ACCOUNT_N_DAILY_LIMIT=       # optional: max posts per day for this account
 CEREBRAS_API_KEY=
 HF_TOKEN=                    # HuggingFace token for auto-replies & prompt optimization
 SUPERSET_SECRET_KEY=
@@ -307,8 +381,14 @@ python fetch_insights.py
 # Refresh tokens
 python refresh_tokens.py
 
+# Run Reddit trends manually
+cd reddit_trends && python reddit_trends.py
+
 # Start all services (from project root)
 docker compose up -d
+
+# Start participant services (from participant folder)
+cd Budimir && docker compose up -d
 
 # SSH tunnel for local MCP access
 ssh -L 7843:localhost:7843 root@23.26.0.184 -N -f
@@ -318,6 +398,9 @@ curl http://localhost:7843/system/health
 
 # Deploy threads_api manually on VPS
 cd /root/threads_poster && docker compose up -d --build threads_api
+
+# Rebuild a participant scheduler on VPS
+cd /root/threads_poster/Budimir && docker compose up -d --build threads_scheduler
 
 # Recreate Superset charts and dashboard
 python superset/create_charts.py
