@@ -146,8 +146,9 @@ def refresh_tokens():
 def main():
     accounts = load_account_ids()
     log.info(f"Планировщик запущен. Аккаунты: {accounts}")
-    log.info(f"Сбор метрик    — каждый день в {INSIGHTS_AT} по Белграду")
-    log.info(f"Генерация      — каждый день в {RUN_AT} по Белграду")
+    log.info(f"Сбор метрик — каждый день в {INSIGHTS_AT} по Белграду")
+    log.info(f"Reddit-темы — каждый день в {REDDIT_AT} по Белграду")
+    log.info(f"Генерация   — каждый день в {RUN_AT} по Белграду")
     log.info(f"Обновление токенов — каждые {REFRESH_EVERY_DAYS} дней")
     log.info(f"Ответы на реплаи   — {', '.join(REPLY_HOURS)} по Белграду")
 
