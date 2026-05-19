@@ -4,15 +4,15 @@
 """
 
 SUBREDDITS: dict[str, list[str]] = {
-#    "philosophy": [
-#        "philosophy",
-#        "askphilosophy",
-#        "unpopularopinion",
-#        "confession",
-#        "AmItheAsshole",
-#        "relationship_advice",
-#        "LifeProTips",
-#    ],
+    "philosophy": [
+        "philosophy",
+        "askphilosophy",
+        "unpopularopinion",
+        "confession",
+        "AmItheAsshole",
+        "relationship_advice",
+        "LifeProTips",
+    ],
 #    "corporate": [
 #        "anticonsumption",
 #        "collapse",
@@ -82,6 +82,10 @@ SUBREDDITS: dict[str, list[str]] = {
 # account_id → группа сабреддитов + язык для перевода тем
 ACCOUNTS: dict[str, dict] = {
     # Tanya
+    "friction.archive": {"group": "philosophy", "lang": "en"},
+    "el.cuerpo.que.piensa": {"group": "philosophy", "lang": "es"},
+    "nehochu_neznau": {"group": "philosophy", "lang": "ru"},
+
     # Slava — добавить аккаунты
     "wifi.wanderer317": {"group": "nomad_life", "lang": "en"},
     "saas.memo": {"group": "startup", "lang": "en"},

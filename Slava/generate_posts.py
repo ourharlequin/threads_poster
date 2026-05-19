@@ -65,14 +65,17 @@ def init_db():
         """)
 
 
-def generate_post(client: Cerebras, fmt_name: str, fmt_prompt: str, system_prompt: str) -> str | None:
+LENGTH_RETRIES = 3
+
+
+def _api_call(client: Cerebras, fmt_name: str, user_prompt: str, system_prompt: str) -> str | None:
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             resp = client.chat.completions.create(
                 model=MODEL,
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user",   "content": fmt_prompt},
+                    {"role": "user",   "content": user_prompt},
                 ],
                 max_completion_tokens=200,
                 temperature=0.9,
@@ -81,12 +84,26 @@ def generate_post(client: Cerebras, fmt_name: str, fmt_prompt: str, system_promp
         except Exception as e:
             err = str(e)
             if "rate_limit" in err.lower() or "429" in err or "too many requests" in err.lower():
-                log.warning(f"Rate limit ({fmt_name}), попытка {attempt}/{MAX_RETRIES}. Жду {RETRY_DELAY}с...")
+                log.warning(f"Rate limit ({fmt_name}), попытка {attempt}/{MAX_RETRIES}. Жду {RETRY_DELAY * attempt}с...")
                 time.sleep(RETRY_DELAY * attempt)
             else:
                 log.error(f"Cerebras error ({fmt_name}): {e}")
                 return None
-    log.error(f"Не удалось сгенерировать пост ({fmt_name}) после {MAX_RETRIES} попыток")
+    log.error(f"Не удалось выполнить запрос ({fmt_name}) после {MAX_RETRIES} попыток")
+    return None
+
+
+def generate_post(client: Cerebras, fmt_name: str, fmt_prompt: str, system_prompt: str, max_chars: int = 500) -> str | None:
+    prompt = fmt_prompt
+    for length_attempt in range(1, LENGTH_RETRIES + 1):
+        text = _api_call(client, fmt_name, prompt, system_prompt)
+        if text is None:
+            return None
+        if len(text) <= max_chars:
+            return text
+        log.warning(f"[{fmt_name}] Слишком длинный: {len(text)} символов > {max_chars} (попытка {length_attempt}/{LENGTH_RETRIES})")
+        prompt = fmt_prompt + f"\n\nСлишком длинно. Перепиши как более короткую мысль. Жёсткий лимит: {max_chars} символов."
+    log.error(f"[{fmt_name}] Пост всё ещё длиннее {max_chars} символов после {LENGTH_RETRIES} попыток — пропускаю")
     return None
 
 
@@ -117,6 +134,7 @@ def main():
 
     system_prompt = config["system"]
     formats       = config["formats"]
+    max_chars     = config.get("max_chars", 500)
 
     from reddit_trends_config import ACCOUNTS as REDDIT_ACCOUNTS
     acc_reddit = REDDIT_ACCOUNTS.get(account_id)
@@ -145,7 +163,7 @@ def main():
         for i in range(count):
             fmt_name   = random.choice(fmt_names)
             fmt_prompt = formats[fmt_name]
-            content    = generate_post(client, fmt_name, fmt_prompt + topics_context, system_prompt)
+            content    = generate_post(client, fmt_name, fmt_prompt + topics_context, system_prompt, max_chars=max_chars)
 
             if not content:
                 failed += 1
