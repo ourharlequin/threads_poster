@@ -86,9 +86,10 @@ def generate_all():
 
 def fetch_reddit_trends():
     log.info("Собираю темы дня из Reddit...")
-    script = os.path.join(os.path.dirname(__file__), '..', 'reddit_trends', 'reddit_trends.py')
+    reddit_dir = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'reddit_trends'))
     result = subprocess.run(
-        [sys.executable, script],
+        [sys.executable, 'reddit_trends.py'],
+        cwd=reddit_dir,
         capture_output=False,
     )
     if result.returncode != 0:

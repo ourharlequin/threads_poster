@@ -17,9 +17,11 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - TZ=Europe/Belgrade
+      - REDDIT_DB_PATH=/reddit_trends/data/reddit.duckdb
     volumes:
       - .:/app
       - ./data:/app/data
+      - ../reddit_trends:/reddit_trends
     entrypoint: ["python", "scheduler.py"]
   threads_generator:
     build: .
@@ -28,9 +30,11 @@ services:
     env_file: .env
     environment:
       - PYTHONUNBUFFERED=1
+      - REDDIT_DB_PATH=/reddit_trends/data/reddit.duckdb
     volumes:
       - .:/app
       - ./data:/app/data
+      - ../reddit_trends:/reddit_trends
     entrypoint: ["python", "generate_posts.py"]
     # Usage: docker-compose --profile tools run --rm threads_generator --account tatiana.philosophy.eng
   threads_refresher:
