@@ -3,3 +3,4 @@ python-dotenv
 duckdb
 cerebras-cloud-sdk
 schedule
+feedparser
