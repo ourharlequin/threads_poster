@@ -4,7 +4,7 @@ Publisher для Threads — постинг в 6 аккаунтов.
 Логика:
 - 6 потоков, по одному на аккаунт (независимое расписание)
 - Окно постинга: 9:00–21:00 по Белграду
-- Интервал между постами: 10–40 минут (рандом)
+- Интервал между постами: 60–120 минут (рандом)
 - Имитация набора текста: 1–5 секунд перед публикацией
 - 5% шанс пропустить публикацию
 - Источник постов: DuckDB (status='pending')
@@ -33,8 +33,8 @@ TIMEZONE = ZoneInfo("Europe/Belgrade")
 START_HOUR = 9
 END_HOUR = 21
 
-MIN_INTERVAL_MIN = 10
-MAX_INTERVAL_MIN = 40
+MIN_INTERVAL_MIN = 60
+MAX_INTERVAL_MIN = 120
 
 TYPING_DELAY_MIN_SEC = 1
 TYPING_DELAY_MAX_SEC = 5
