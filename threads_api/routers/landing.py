@@ -1930,10 +1930,10 @@ _HTML = """<!doctype html>
         var chunk = await reader.read();
         if (chunk.done) break;
         buf += dec.decode(chunk.value, {stream: true});
-        var parts = buf.split('\n');
+        var parts = buf.split('\\n');
         buf = parts.pop();
         for (var i = 0; i < parts.length; i++) {
-          var line = parts[i].replace(/\r$/, '');
+          var line = parts[i].replace(/\\r$/, '');
           if (!line.startsWith('data: ')) continue;
           try {
             var ev = JSON.parse(line.slice(6));
