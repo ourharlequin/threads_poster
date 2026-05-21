@@ -1930,8 +1930,7 @@ async function sendMessage() {
       var chunk = await reader.read();
       if (chunk.done) break;
       buf += decoder.decode(chunk.value, {stream: true});
-      var lines = buf.split('
-');
+      var lines = buf.split('\n');
       buf = lines.pop();
       for (var i = 0; i < lines.length; i++) {
         var line = lines[i];
