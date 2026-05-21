@@ -125,10 +125,10 @@ def _get_unanswered(db_path: str, account_id: str, limit: int = 10) -> list[dict
 
 
 def _llm_client() -> OpenAI:
-    api_key = os.environ.get("HF_TOKEN")
+    api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
-        raise HTTPException(500, "HF_TOKEN not set")
-    return OpenAI(base_url="https://router.huggingface.co/v1", api_key=api_key)
+        raise HTTPException(500, "GROQ_API_KEY not set")
+    return OpenAI(base_url="https://api.groq.com/openai/v1", api_key=api_key)
 
 
 def _generate_replies(comments: list[dict]) -> dict[str, str]:
@@ -149,7 +149,7 @@ def _generate_replies(comments: list[dict]) -> dict[str, str]:
         + json.dumps(items, ensure_ascii=False)
     )
     resp = _llm_client().chat.completions.create(
-        model="Qwen/Qwen2.5-72B-Instruct",
+        model="llama-3.3-70b-versatile",
         messages=[
             {"role": "system", "content": (
                 "You write short natural replies to social media comments on behalf of the post author. "
@@ -178,7 +178,7 @@ def _analyze_sentiment(comments: list[dict]) -> list[dict]:
         + json.dumps(items, ensure_ascii=False)
     )
     resp = client.chat.completions.create(
-        model="Qwen/Qwen2.5-72B-Instruct",
+        model="llama-3.3-70b-versatile",
         messages=[
             {"role": "system", "content": "Classify social media comment sentiment. Return JSON only."},
             {"role": "user", "content": user_msg},
