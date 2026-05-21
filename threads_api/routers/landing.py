@@ -1547,10 +1547,6 @@ _HTML = """<!doctype html>
         <div class="chat-body" id="chat-body">
           <div class="msg bot">Hi! Ask me about any account, top posts, or portfolio stats.</div>
         </div>
-          </div>
-          <div class="msg user">Schedule a follow-up post in the same voice for Friday 8am.</div>
-          <div class="msg bot">Queued. Draft generated, scheduled for Fri May&nbsp;22 · 08:00 BST on <b style="color:var(--text)">@mind_the_tap</b>. I'll ping you if engagement deviates more than ±20% from the cohort baseline.</div>
-        </div>
         <div class="chat-input">
           <input id="chat-input" placeholder="Ask about any account, post, or metric…" autocomplete="off" />
           <button class="send" id="chat-send" aria-label="send">
