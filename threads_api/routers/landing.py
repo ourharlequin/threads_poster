@@ -1870,97 +1870,99 @@ _HTML = """<!doctype html>
 
 <script>
 // UTC clock
-function updateClock() {
-  var now = new Date();
-  var h = String(now.getUTCHours()).padStart(2,'0');
-  var m = String(now.getUTCMinutes()).padStart(2,'0');
-  var el = document.getElementById('dash-time');
-  if (el) el.textContent = 'UTC ' + h + ':' + m;
-}
-updateClock();
-setInterval(updateClock, 30000);
+(function() {
+  function updateClock() {
+    var h = String(new Date().getUTCHours()).padStart(2,'0');
+    var m = String(new Date().getUTCMinutes()).padStart(2,'0');
+    var el = document.getElementById('dash-time');
+    if (el) el.textContent = 'UTC ' + h + ':' + m;
+  }
+  updateClock();
+  setInterval(updateClock, 30000);
 
-// Live chat
-var chatBody = document.getElementById('chat-body');
-var chatInput = document.getElementById('chat-input');
-var chatSend = document.getElementById('chat-send');
-var chatHistory = [];
-
-function addMsg(role, text) {
-  var el = document.createElement('div');
-  el.className = 'msg ' + role;
-  el.textContent = text;
-  chatBody.appendChild(el);
-  chatBody.scrollTop = chatBody.scrollHeight;
-  return el;
-}
-
-function addToolHint(name) {
-  var el = document.createElement('div');
-  el.className = 'tool-hint';
-  el.textContent = name + '…';
-  chatBody.appendChild(el);
-  chatBody.scrollTop = chatBody.scrollHeight;
-  return el;
-}
-
-async function sendMessage() {
-  var msg = chatInput.value.trim();
-  if (!msg || chatSend.disabled) return;
-  chatInput.value = '';
-  chatSend.disabled = true;
-
-  addMsg('user', msg);
-  var botEl = addMsg('bot', '');
-  var toolEl = null;
-  var fullText = '';
-
-  try {
-    var res = await fetch('/chat/stream', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({message: msg, history: chatHistory}),
-    });
-
-    var reader = res.body.getReader();
-    var decoder = new TextDecoder();
-    var buf = '';
-
-    while (true) {
-      var chunk = await reader.read();
-      if (chunk.done) break;
-      buf += decoder.decode(chunk.value, {stream: true});
-      var lines = buf.split('\n');
-      buf = lines.pop();
-      for (var i = 0; i < lines.length; i++) {
-        var line = lines[i];
-        if (!line.startsWith('data: ')) continue;
-        var data = JSON.parse(line.slice(6));
-        if (data.type === 'text') {
-          if (toolEl) { toolEl.remove(); toolEl = null; }
-          fullText += data.text;
-          botEl.textContent = fullText;
-          chatBody.scrollTop = chatBody.scrollHeight;
-        } else if (data.type === 'tool') {
-          toolEl = addToolHint(data.name);
-        } else if (data.type === 'done') {
-          if (toolEl) { toolEl.remove(); toolEl = null; }
-          chatHistory = data.history;
-        }
-      }
-    }
-  } catch (e) {
-    botEl.textContent = 'Connection error.';
+  var chatBody = document.getElementById('chat-body');
+  var chatInput = document.getElementById('chat-input');
+  var chatSend = document.getElementById('chat-send');
+  if (!chatBody || !chatInput || !chatSend) {
+    console.warn('Thready chat: elements not found');
+    return;
   }
 
-  chatSend.disabled = false;
-  chatInput.focus();
-}
+  var chatHistory = [];
 
-chatSend.addEventListener('click', sendMessage);
-chatInput.addEventListener('keydown', function(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-});
+  function addMsg(role, text) {
+    var el = document.createElement('div');
+    el.className = 'msg ' + role;
+    el.textContent = text;
+    chatBody.appendChild(el);
+    chatBody.scrollTop = chatBody.scrollHeight;
+    return el;
+  }
+
+  function addHint(name) {
+    var el = document.createElement('div');
+    el.className = 'tool-hint';
+    el.textContent = name + '...';
+    chatBody.appendChild(el);
+    chatBody.scrollTop = chatBody.scrollHeight;
+    return el;
+  }
+
+  async function send() {
+    var msg = chatInput.value.trim();
+    if (!msg) return;
+    chatInput.value = '';
+    chatSend.disabled = true;
+    addMsg('user', msg);
+    var botEl = addMsg('bot', '');
+    var hintEl = null;
+    var text = '';
+    try {
+      var res = await fetch('/chat/stream', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({message: msg, history: chatHistory})
+      });
+      var reader = res.body.getReader();
+      var dec = new TextDecoder();
+      var buf = '';
+      while (true) {
+        var chunk = await reader.read();
+        if (chunk.done) break;
+        buf += dec.decode(chunk.value, {stream: true});
+        var parts = buf.split('\n');
+        buf = parts.pop();
+        for (var i = 0; i < parts.length; i++) {
+          var line = parts[i].replace(/\r$/, '');
+          if (!line.startsWith('data: ')) continue;
+          try {
+            var ev = JSON.parse(line.slice(6));
+            if (ev.type === 'text') {
+              if (hintEl) { hintEl.remove(); hintEl = null; }
+              text += ev.text;
+              botEl.textContent = text;
+              chatBody.scrollTop = chatBody.scrollHeight;
+            } else if (ev.type === 'tool') {
+              hintEl = addHint(ev.name);
+            } else if (ev.type === 'done') {
+              if (hintEl) { hintEl.remove(); hintEl = null; }
+              chatHistory = ev.history;
+            }
+          } catch(_) {}
+        }
+      }
+    } catch (e) {
+      botEl.textContent = 'Error: ' + e.message;
+    }
+    chatSend.disabled = false;
+    chatInput.focus();
+  }
+
+  chatSend.onclick = send;
+  chatInput.onkeydown = function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  };
+}());
 </script>
 </body>
 </html>
