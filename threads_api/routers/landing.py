@@ -1790,7 +1790,6 @@ _HTML = """<!doctype html>
             <span>ref</span><b data-out="ref">—</b>
           </div>
           <div style="display:flex;gap:10px;margin-top:6px">
-            <a class="btn btn-ghost" href="https://t.me/thready" target="_blank" rel="noopener" style="padding:10px 14px">Open Telegram</a>
             <button type="button" class="btn btn-ghost" style="padding:10px 14px;cursor:pointer" onclick="document.getElementById('demo-form').classList.remove('is-sent');document.getElementById('demo-form').reset();">Submit another</button>
           </div>
         </div>
@@ -1842,7 +1841,7 @@ _HTML = """<!doctype html>
       fetch(SHEET_URL, {
         method: 'POST',
         mode: 'no-cors',
-        headers: {'Content-Type': 'application/json'},
+        headers: {'Content-Type': 'text/plain'},
         body: JSON.stringify(data)
       }).catch(function(){});
 
