@@ -1812,19 +1812,18 @@ _HTML = """<!doctype html>
 
 <script>
   (function(){
+    var SHEET_URL = 'https://script.google.com/macros/s/AKfycbyJxf1Rl_VlxogAq9jTVfLPhqupHsMMNXmBEHzHfEMNmyzA6R-M00SDYjYRskAjDGd5/exec';
     var form = document.getElementById('demo-form');
     if(!form) return;
     form.addEventListener('submit', function(e){
       e.preventDefault();
       var data = {};
       new FormData(form).forEach(function(v,k){ data[k] = String(v).trim(); });
-      // simple required check
       if(!data.company || !data.name || !/.+@.+\..+/.test(data.email)){
         var first = form.querySelector('input:invalid, [required]:placeholder-shown') || form.querySelector('input[required]');
         if(first){ first.focus(); first.style.borderColor = 'var(--red, #e23636)'; }
         return;
       }
-      // build receipt
       var now = new Date();
       var ref = 'DM-' + now.getFullYear().toString().slice(-2) +
                 String(now.getMonth()+1).padStart(2,'0') +
@@ -1833,7 +1832,6 @@ _HTML = """<!doctype html>
       data._received = now.toISOString();
       data._ref = ref;
 
-      // persist locally so we don't lose the submission on reload
       try{
         var key = 'thready.demo.requests';
         var arr = JSON.parse(localStorage.getItem(key) || '[]');
@@ -1841,7 +1839,13 @@ _HTML = """<!doctype html>
         localStorage.setItem(key, JSON.stringify(arr));
       }catch(_){}
 
-      // populate success state
+      fetch(SHEET_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+      }).catch(function(){});
+
       var slots = form.querySelectorAll('[data-out]');
       slots.forEach(function(el){
         var k = el.getAttribute('data-out');
@@ -1853,8 +1857,6 @@ _HTML = """<!doctype html>
       });
 
       form.classList.add('is-sent');
-      // bring success state into view
-      form.scrollIntoView ? null : null;
       window.scrollTo({ top: form.getBoundingClientRect().top + window.scrollY - 80, behavior: 'smooth' });
     });
   })();
