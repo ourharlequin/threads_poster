@@ -57,7 +57,14 @@ threads_api  (Docker, port 7843)
 - `pao.e.mar` — Rio de Janeiro lifestyle (cafes, restaurants, hidden spots), Brazilian Portuguese
 - `trick.trend` — fashion, jewelry, wine, culture, English
 
-### Chiara (6 accounts) — configured, containers not started yet
+### Chiara (7 accounts) — active
+- `work.with.karimi` — career in Europe (job markets, permits, relocation), English
+- `eu.career.map` — EU job market, work permits, cross-border hiring, English
+- `data.career.lab` — data science / ML / AI careers, English
+- `entry.level.unlocked` — entry-level job seekers, first jobs, internships, English
+- `career.compound` — career growth strategy, salary negotiation, English
+- `carriere.lucide` — carrières et marché du travail européen, French
+- `carriera.aperta` — carriere e mercato del lavoro europeo, Italian
 
 ---
 
@@ -96,7 +103,7 @@ threads_poster/
       superset.py              — status, merger-run, rebuild
       replies.py               — fetch comments, sentiment analysis, auto-reply, debug
       optimize.py              — read prompts, analyze top/worst posts, apply/create prompt configs
-      landing.py               — GET /landing — static HTML landing page with analytics chat
+      landing.py               — GET /landing — static HTML landing page with analytics chat + demo form → Google Sheet
       chat.py                  — streaming chat via Anthropic Claude Haiku with tool use
   mcp_server/
     threads_mcp_server.py      — 27 @mcp.tool() via FastMCP + httpx
@@ -316,6 +323,21 @@ Apache Superset 4.1.1 at **http://localhost:8088** — login `admin` / `admin`
 | Posts published per day | Bar | posts |
 | Top posts by views | Table | post_insights |
 | Post status distribution | Pie | posts |
+
+---
+
+## Landing Page
+
+`GET /landing` — публичная страница `thready.digital`.
+
+**Demo form** — при отправке делает `fetch` (no-cors, text/plain) напрямую из браузера на Google Apps Script, который пишет строку в Google Sheet "Thready Demo Customers".
+
+- **Apps Script:** `https://script.google.com/macros/s/AKfycbz8cafTsgS0AnzgPS6o6eWK2yfL8_6WhTkPGRAoww4zhgfz-2Ba-m1XQTbocy7y3mgr/exec`
+- **Sheet ID:** `1zXQQpTYKNcCQfgv4EOlzNtWcW9jIgDyPSz6LcXHQHYg`
+- **Деплой:** Execute as Me / Anyone (no auth required)
+- Скрипт использует `openById` (не `getActiveSpreadsheet`) — standalone проект
+
+**Analytics chat** — стриминг через `POST /chat`, Claude Haiku с tool use, доступен прямо на лендинге.
 
 ---
 
