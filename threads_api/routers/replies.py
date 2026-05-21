@@ -171,26 +171,30 @@ def _generate_replies(comments: list[dict]) -> dict[str, str]:
 
 def _analyze_sentiment(comments: list[dict]) -> list[dict]:
     client = _llm_client()
-    items = [{"comment_id": c["comment_id"], "text": c["comment_text"]} for c in comments]
-    user_msg = (
-        "Classify the sentiment of each comment as one of: positive, negative, question, neutral.\n"
-        "Return ONLY valid JSON: [{\"comment_id\": \"...\", \"sentiment\": \"...\"}, ...]\n\n"
-        + json.dumps(items, ensure_ascii=False)
-    )
-    resp = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[
-            {"role": "system", "content": "Classify social media comment sentiment. Return JSON only."},
-            {"role": "user", "content": user_msg},
-        ],
-        max_tokens=1024,
-        temperature=0.1,
-    )
-    text = resp.choices[0].message.content.strip()
-    start, end = text.find("["), text.rfind("]")
-    if start == -1 or end == -1:
-        return []
-    return json.loads(text[start:end + 1])
+    results = []
+    for i in range(0, len(comments), 20):
+        batch = comments[i:i + 20]
+        items = [{"comment_id": c["comment_id"], "text": c["comment_text"]} for c in batch]
+        user_msg = (
+            "Classify the sentiment of each comment as one of: positive, negative, question, neutral.\n"
+            "Return ONLY valid JSON: [{\"comment_id\": \"...\", \"sentiment\": \"...\"}, ...]\n\n"
+            + json.dumps(items, ensure_ascii=False)
+        )
+        resp = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": "Classify social media comment sentiment. Return JSON only."},
+                {"role": "user", "content": user_msg},
+            ],
+            max_tokens=2048,
+            temperature=0.1,
+        )
+        text = resp.choices[0].message.content.strip()
+        start, end = text.find("["), text.rfind("]")
+        if start == -1 or end == -1:
+            continue
+        results.extend(json.loads(text[start:end + 1]))
+    return results
 
 
 def _publish_reply(comment_id: str, reply_text: str, token: str, user_id: str) -> str | None:
