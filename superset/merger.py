@@ -1,11 +1,12 @@
 """
 merger.py — каждый день в 07:45 по Белграду сливает данные
-из трёх участников в единый analytics.duckdb для Superset.
+из четырёх участников в единый analytics.duckdb для Superset.
 
 Источники (пропускаются если файл не существует):
   /app/data/budimir/data.duckdb
   /app/data/slava/data.duckdb
   /app/data/tanya/data.duckdb
+  /app/data/chiara/data.duckdb
 
 Результат:
   /app/data/analytics/analytics.duckdb
@@ -29,6 +30,7 @@ SOURCES = {
     "budimir": "/app/data/budimir/data.duckdb",
     "slava":   "/app/data/slava/data.duckdb",
     "tanya":   "/app/data/tanya/data.duckdb",
+    "chiara":  "/app/data/chiara/data.duckdb",
 }
 
 logging.basicConfig(
