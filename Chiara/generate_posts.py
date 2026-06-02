@@ -20,7 +20,7 @@ from prompts import get_account_config
 load_dotenv()
 
 DB_PATH        = os.getenv("DB_PATH", "data/data.duckdb")
-MODEL          = "llama3.1-8b"
+MODEL          = "gpt-oss-120b"
 POSTS_COUNT    = 30
 REQUEST_DELAY  = 3.0   # секунды между запросами
 MAX_RETRIES    = 3

@@ -24,7 +24,7 @@ from config import SUBREDDITS, ACCOUNTS, LANG_NAMES
 load_dotenv()
 
 DB_PATH        = os.getenv("REDDIT_DB_PATH", "data/reddit.duckdb")
-MODEL          = "llama3.1-8b"
+MODEL          = "gpt-oss-120b"
 POSTS_PER_SUB  = 10
 MIN_SUMMARY_LEN = 30
 REQUEST_DELAY  = 1.5
