@@ -1980,7 +1980,7 @@ _HTML = """<!doctype html>
     if (el) el.textContent = String(val);
   }
 
-  fetch('/landing-stats')
+  fetch('/analytics/landing-stats')
     .then(function(r) { return r.json(); })
     .then(function(json) {
       if (!json.ok) return;
