@@ -1,7 +1,7 @@
 import os
 from fastapi import APIRouter, Query, HTTPException
 from db import query_data, query_analytics
-from registry import PARTICIPANTS
+from registry import PARTICIPANTS, REGISTRY
 
 router = APIRouter()
 
@@ -147,8 +147,11 @@ def landing_stats():
     participant_views: dict[str, int] = {}
     accounts = []
 
+    active_ids = set(REGISTRY.keys())
     for r in acc_rows:
         acc_id, participant = r[0], r[1]
+        if acc_id not in active_ids:
+            continue
         views, replies, delta, current = int(r[2]), int(r[3]), int(r[4]), int(r[5])
         total_views += views
         total_replies += replies
