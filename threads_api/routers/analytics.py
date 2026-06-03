@@ -121,7 +121,12 @@ def compare(days: int = Query(7, ge=1)):
 
 @router.get("/landing-stats")
 def landing_stats():
-    acc_rows = query_analytics("""
+    active_ids = list(REGISTRY.keys()) or None
+    id_filter = (
+        f"AND account_id IN ({','.join(repr(x) for x in active_ids)})"
+        if active_ids else ""
+    )
+    acc_rows = query_analytics(f"""
         SELECT
             account_id,
             participant,
@@ -131,6 +136,7 @@ def landing_stats():
             MAX(followers_count)                        AS followers_current
         FROM account_insights
         WHERE date >= CURRENT_DATE - INTERVAL '30' DAY
+          {id_filter}
         GROUP BY account_id, participant
         ORDER BY SUM(views) DESC
     """)
@@ -147,11 +153,8 @@ def landing_stats():
     participant_views: dict[str, int] = {}
     accounts = []
 
-    active_ids = set(REGISTRY.keys())
     for r in acc_rows:
         acc_id, participant = r[0], r[1]
-        if acc_id not in active_ids:
-            continue
         views, replies, delta, current = int(r[2]), int(r[3]), int(r[4]), int(r[5])
         total_views += views
         total_replies += replies
