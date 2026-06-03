@@ -163,10 +163,14 @@ def extract_topics_en(client: Cerebras, group: str, posts: list[dict]) -> list[d
                 {"role": "system", "content": instruction},
                 {"role": "user",   "content": f"Reddit posts:\n{posts_text}"},
             ],
-            max_completion_tokens=800,
+            max_completion_tokens=1500,
             temperature=0.5,
         )
-        raw = resp.choices[0].message.content.strip()
+        content = resp.choices[0].message.content
+        if not content:
+            log.warning(f"Cerebras вернул пустой ответ [{group}/en]")
+            return []
+        raw = content.strip()
         start, end = raw.find("["), raw.rfind("]")
         if start == -1 or end == -1:
             log.warning(f"LLM не вернул JSON [{group}/en]: {raw[:100]}")
@@ -195,10 +199,14 @@ def translate_topics(client: Cerebras, topics: list[dict], lang: str) -> list[di
                 {"role": "system", "content": instruction},
                 {"role": "user",   "content": topics_json},
             ],
-            max_completion_tokens=800,
+            max_completion_tokens=1500,
             temperature=0.2,
         )
-        raw = resp.choices[0].message.content.strip()
+        content = resp.choices[0].message.content
+        if not content:
+            log.warning(f"Cerebras вернул пустой ответ при переводе [{lang}]")
+            return topics
+        raw = content.strip()
         start, end = raw.find("["), raw.rfind("]")
         if start == -1 or end == -1:
             log.warning(f"Перевод не вернул JSON [{lang}]: {raw[:100]}")
