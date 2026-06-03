@@ -1,7 +1,7 @@
 import os
 from fastapi import APIRouter, Query, HTTPException
 from db import query_data, query_analytics
-from registry import PARTICIPANTS, REGISTRY
+from registry import PARTICIPANTS, REGISTRY, build_registry
 
 router = APIRouter()
 
@@ -121,7 +121,7 @@ def compare(days: int = Query(7, ge=1)):
 
 @router.get("/landing-stats")
 def landing_stats():
-    active_ids = list(REGISTRY.keys()) or None
+    active_ids = list(REGISTRY.keys()) or list(build_registry().keys())
     id_filter = (
         f"AND account_id IN ({','.join(repr(x) for x in active_ids)})"
         if active_ids else ""
