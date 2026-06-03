@@ -830,7 +830,7 @@ _HTML = """<!doctype html>
 <section class="hero-intro">
   <div class="wrap intro-grid">
     <div class="intro-copy">
-      <span class="pill"><span class="dot"></span> Live · 14 accounts · 400K views/month · Official API</span>
+      <span class="pill"><span class="dot"></span> Live · <span data-stat="pill-accounts">14</span> accounts · <span data-stat="pill-views">400K</span> views/month · Official API</span>
       <p class="hero-sub">
         AI-generated content with approval workflows, unified analytics and white-label reporting —
         built for agencies and brand teams managing dozens of accounts.
@@ -850,22 +850,22 @@ _HTML = """<!doctype html>
       <div class="kpi">
         <div class="cell">
           <div class="label">Views</div>
-          <div class="num">400K<span class="unit">/ 30d</span></div>
-          <div class="delta">▲ across 14 accounts</div>
+          <div class="num"><span data-stat="kpi-views">400K</span><span class="unit">/ 30d</span></div>
+          <div class="delta">▲ across <span data-stat="kpi-accounts-inline">14</span> accounts</div>
         </div>
         <div class="cell">
           <div class="label">Posts published</div>
-          <div class="num">12.6K<span class="unit">/ 30d</span></div>
+          <div class="num"><span data-stat="kpi-posts">12.6K</span><span class="unit">/ 30d</span></div>
           <div class="delta">~30 / account / day</div>
         </div>
         <div class="cell">
           <div class="label">Active accounts</div>
-          <div class="num">14<span class="unit">across 4 langs</span></div>
+          <div class="num"><span data-stat="kpi-accounts">14</span><span class="unit">across 4 langs</span></div>
           <div class="delta">EN · RU · ES · PT</div>
         </div>
         <div class="cell">
           <div class="label">Operators</div>
-          <div class="num">4<span class="unit">participants</span></div>
+          <div class="num"><span data-stat="kpi-operators">4</span><span class="unit">participants</span></div>
           <div class="delta">Budimir · Slava · Tanya · Chiara</div>
         </div>
       </div>
@@ -1092,8 +1092,8 @@ _HTML = """<!doctype html>
           <div style="display:flex;justify-content:space-between;align-items:flex-start">
             <div>
               <h4>Views — last 30 days</h4>
-              <div class="big">400,357</div>
-              <div class="sub">portfolio total, 14 accounts</div>
+              <div class="big" data-stat="dash-views">400,357</div>
+              <div class="sub">portfolio total, <span data-stat="dash-accounts">14</span> accounts</div>
             </div>
             <div class="legend">
               <span class="a"><i></i>Budimir</span>
@@ -1138,7 +1138,7 @@ _HTML = """<!doctype html>
           <div class="dash-card">
             <h4>Top account · views / 30d</h4>
             <!-- horizontal bars -->
-            <div style="display:flex;flex-direction:column;gap:10px;margin-top:14px;font-family:var(--mono);font-size:12px">
+            <div id="top-accounts-bars" style="display:flex;flex-direction:column;gap:10px;margin-top:14px;font-family:var(--mono);font-size:12px">
               <div>
                 <div style="display:flex;justify-content:space-between"><span>mind_the_tap</span><span>100.5K</span></div>
                 <div style="height:6px;background:#ece9e0;border-radius:3px;overflow:hidden;margin-top:4px"><div style="width:100%;height:100%;background:linear-gradient(90deg,#ef6f5e,#d85a4a)"></div></div>
@@ -1165,13 +1165,13 @@ _HTML = """<!doctype html>
           <div class="row-2">
             <div class="dash-card">
               <h4>Replies · 30d</h4>
-              <div class="big">457</div>
+              <div class="big" data-stat="dash-replies">457</div>
               <div class="sub">peak: <b style="color:var(--text)">@cycling_superhero</b> · 230</div>
             </div>
             <div class="dash-card">
               <h4>New followers</h4>
-              <div class="big" style="color:var(--good)">+195</div>
-              <div class="sub">across 14 accounts · 30d</div>
+              <div class="big" style="color:var(--good)" data-stat="dash-followers">+195</div>
+              <div class="sub">across <span data-stat="dash-accounts-2">14</span> accounts · 30d</div>
             </div>
           </div>
         </div>
@@ -1223,79 +1223,79 @@ _HTML = """<!doctype html>
           </div>
         </div>
         <div class="meta">
-          <span>VIEWS / 30D · <b>266,958</b></span>
+          <span>VIEWS / 30D · <b data-stat="pv-budimir">266,958</b></span>
           <span>POSTS / DAY · <b>~180</b></span>
         </div>
       </div>
-      <article class="account">
+      <article class="account" data-account="mind_the_tap">
         <div class="acc-top">
           <div class="handle"><span class="at">@</span>mind_the_tap</div>
           <span class="lang">EN</span>
         </div>
         <div class="niche">London — cafés, pubs, neighbourhoods.</div>
         <div class="acc-stats">
-          <div class="s"><span class="v">100.5K</span><span class="k">views · 30d</span></div>
-          <div class="s"><span class="v">+70</span><span class="k">followers · 30d</span></div>
+          <div class="s"><span class="v" data-field="views">100.5K</span><span class="k">views · 30d</span></div>
+          <div class="s"><span class="v" data-field="followers-delta">+70</span><span class="k">followers · 30d</span></div>
           <svg class="sparkline" viewBox="0 0 80 24" fill="none"><polyline points="0,20 10,19 20,18 30,17 40,16 50,12 60,8  70,6 80,4" stroke="#ef6f5e" stroke-width="1.4" fill="none"/></svg>
         </div>
       </article>
-      <article class="account">
+      <article class="account" data-account="event_parsing">
         <div class="acc-top">
           <div class="handle"><span class="at">@</span>event_parsing</div>
           <span class="lang">EN</span>
         </div>
         <div class="niche">AI & tech news, a sharper take.</div>
         <div class="acc-stats">
-          <div class="s"><span class="v">51.3K</span><span class="k">views · 30d</span></div>
-          <div class="s"><span class="v">+8</span><span class="k">followers · 30d</span></div>
+          <div class="s"><span class="v" data-field="views">51.3K</span><span class="k">views · 30d</span></div>
+          <div class="s"><span class="v" data-field="followers-delta">+8</span><span class="k">followers · 30d</span></div>
           <svg class="sparkline" viewBox="0 0 80 24" fill="none"><polyline points="0,20 10,18 20,17 30,14 40,15 50,11 60,9  70,7 80,4" stroke="#ef6f5e" stroke-width="1.4" fill="none"/></svg>
         </div>
       </article>
-      <article class="account">
+      <article class="account" data-account="cycling_superhero">
         <div class="acc-top">
           <div class="handle"><span class="at">@</span>cycling_superhero</div>
           <span class="lang">EN</span>
         </div>
         <div class="niche">Cycling — training, races, gear.</div>
         <div class="acc-stats">
-          <div class="s"><span class="v">44.6K</span><span class="k">views · 30d</span></div>
-          <div class="s"><span class="v">+11</span><span class="k">followers · 30d</span></div>
+          <div class="s"><span class="v" data-field="views">44.6K</span><span class="k">views · 30d</span></div>
+          <div class="s"><span class="v" data-field="followers-delta">+11</span><span class="k">followers · 30d</span></div>
           <svg class="sparkline" viewBox="0 0 80 24" fill="none"><polyline points="0,22 10,21 20,18 30,16 40,14 50,12 60,10 70,8 80,6" stroke="#ef6f5e" stroke-width="1.4" fill="none"/></svg>
         </div>
       </article>
-      <article class="account">
+      <article class="account" data-account="claude_space">
         <div class="acc-top">
           <div class="handle"><span class="at">@</span>claude_space</div>
           <span class="lang">RU</span>
         </div>
         <div class="niche">Daily life with Claude.</div>
         <div class="acc-stats">
-          <div class="s"><span class="v">35.1K</span><span class="k">views · 30d</span></div>
-          <div class="s"><span class="v">+9</span><span class="k">followers · 30d</span></div>
+          <div class="s"><span class="v" data-field="views">35.1K</span><span class="k">views · 30d</span></div>
+          <div class="s"><span class="v" data-field="followers-delta">+9</span><span class="k">followers · 30d</span></div>
           <svg class="sparkline" viewBox="0 0 80 24" fill="none"><polyline points="0,21 10,19 20,17 30,18 40,14 50,12 60,10 70,8 80,6" stroke="#ef6f5e" stroke-width="1.4" fill="none"/></svg>
         </div>
       </article>
-      <article class="account">
+      <article class="account" data-account="budeschka">
         <div class="acc-top">
           <div class="handle"><span class="at">@</span>budeschka</div>
           <span class="lang">RU</span>
         </div>
         <div class="niche">Surreal microfiction.</div>
         <div class="acc-stats">
-          <div class="s"><span class="v">17.9K</span><span class="k">views · 30d</span></div>
-          <div class="s"><span class="v">+17</span><span class="k">followers · 30d</span></div>
+          <div class="s"><span class="v" data-field="views">17.9K</span><span class="k">views · 30d</span></div>
+          <div class="s"><span class="v" data-field="followers-delta">+17</span><span class="k">followers · 30d</span></div>
           <svg class="sparkline" viewBox="0 0 80 24" fill="none"><polyline points="0,18 10,16 20,12 30,15 40,11 50,13 60,9  70,11 80,7" stroke="#ef6f5e" stroke-width="1.4" fill="none"/></svg>
         </div>
       </article>
-      <article class="account">
+      <article class="account" data-account="aire.porteno">
         <div class="acc-top">
           <div class="handle"><span class="at">@</span>aire.porteno</div>
           <span class="lang">ES</span>
         </div>
         <div class="niche">Buenos Aires — cafés &amp; spaces.</div>
         <div class="acc-stats">
-          <div class="s"><span class="v">17.6K</span><span class="k">views · 30d</span></div>
-          <div class="s"><span class="v">+18</span><span class="k">followers · 30d</span></div>
+          <div class="s"><span class="v" data-field="views">17.6K</span><span class="k">views · 30d</span></div>
+          <div class="s"><span class="v" data-field="followers-delta">+18</span><span class="k">followers · 30d</span></div>
           <svg class="sparkline" viewBox="0 0 80 24" fill="none"><polyline points="0,20 10,18 20,17 30,14 40,15 50,11 60,9  70,7 80,4" stroke="#ef6f5e" stroke-width="1.4" fill="none"/></svg>
         </div>
       </article>
@@ -1311,55 +1311,55 @@ _HTML = """<!doctype html>
           </div>
         </div>
         <div class="meta">
-          <span>VIEWS / 30D · <b>102,681</b></span>
+          <span>VIEWS / 30D · <b data-stat="pv-slava">102,681</b></span>
           <span>POSTS / DAY · <b>~120</b></span>
         </div>
       </div>
-      <article class="account">
+      <article class="account" data-account="saas.memo">
         <div class="acc-top">
           <div class="handle"><span class="at">@</span>saas.memo</div>
           <span class="lang">EN</span>
         </div>
         <div class="niche">SaaS humour, founder tropes, deadpan one-liners.</div>
         <div class="acc-stats">
-          <div class="s"><span class="v">42.7K</span><span class="k">views · 30d</span></div>
-          <div class="s"><span class="v">+2</span><span class="k">followers · 30d</span></div>
+          <div class="s"><span class="v" data-field="views">42.7K</span><span class="k">views · 30d</span></div>
+          <div class="s"><span class="v" data-field="followers-delta">+2</span><span class="k">followers · 30d</span></div>
           <svg class="sparkline" viewBox="0 0 80 24" fill="none"><polyline points="0,20 10,18 20,17 30,14 40,15 50,11 60,9  70,7 80,4" stroke="#ef6f5e" stroke-width="1.4" fill="none"/></svg>
         </div>
       </article>
-      <article class="account">
+      <article class="account" data-account="giraffe.from.mobile">
         <div class="acc-top">
           <div class="handle"><span class="at">@</span>giraffe.from.mobile</div>
           <span class="lang">RU</span>
         </div>
         <div class="niche">Turning 30 — observations, small panics, jokes.</div>
         <div class="acc-stats">
-          <div class="s"><span class="v">26.9K</span><span class="k">views · 30d</span></div>
-          <div class="s"><span class="v">+3</span><span class="k">followers · 30d</span></div>
+          <div class="s"><span class="v" data-field="views">26.9K</span><span class="k">views · 30d</span></div>
+          <div class="s"><span class="v" data-field="followers-delta">+3</span><span class="k">followers · 30d</span></div>
           <svg class="sparkline" viewBox="0 0 80 24" fill="none"><polyline points="0,21 10,19 20,17 30,18 40,14 50,12 60,10 70,8 80,6" stroke="#ef6f5e" stroke-width="1.4" fill="none"/></svg>
         </div>
       </article>
-      <article class="account">
+      <article class="account" data-account="tiger.on.remote">
         <div class="acc-top">
           <div class="handle"><span class="at">@</span>tiger.on.remote</div>
           <span class="lang">RU</span>
         </div>
         <div class="niche">A student lampoons his friends’ startups.</div>
         <div class="acc-stats">
-          <div class="s"><span class="v">21.0K</span><span class="k">views · 30d</span></div>
-          <div class="s"><span class="v">+1</span><span class="k">followers · 30d</span></div>
+          <div class="s"><span class="v" data-field="views">21.0K</span><span class="k">views · 30d</span></div>
+          <div class="s"><span class="v" data-field="followers-delta">+1</span><span class="k">followers · 30d</span></div>
           <svg class="sparkline" viewBox="0 0 80 24" fill="none"><polyline points="0,22 10,21 20,18 30,16 40,14 50,12 60,10 70,8 80,6" stroke="#ef6f5e" stroke-width="1.4" fill="none"/></svg>
         </div>
       </article>
-      <article class="account">
+      <article class="account" data-account="slow.routes.in.head">
         <div class="acc-top">
           <div class="handle"><span class="at">@</span>slow.routes.in.head</div>
           <span class="lang">ES</span>
         </div>
         <div class="niche">Remote work, slow living, async culture.</div>
         <div class="acc-stats">
-          <div class="s"><span class="v">12.1K</span><span class="k">views · 30d</span></div>
-          <div class="s"><span class="v">+3</span><span class="k">followers · 30d</span></div>
+          <div class="s"><span class="v" data-field="views">12.1K</span><span class="k">views · 30d</span></div>
+          <div class="s"><span class="v" data-field="followers-delta">+3</span><span class="k">followers · 30d</span></div>
           <svg class="sparkline" viewBox="0 0 80 24" fill="none"><polyline points="0,18 10,16 20,12 30,15 40,11 50,13 60,9  70,11 80,7" stroke="#ef6f5e" stroke-width="1.4" fill="none"/></svg>
         </div>
       </article>
@@ -1375,43 +1375,43 @@ _HTML = """<!doctype html>
           </div>
         </div>
         <div class="meta">
-          <span>VIEWS / 30D · <b>10,707</b></span>
+          <span>VIEWS / 30D · <b data-stat="pv-tanya">10,707</b></span>
           <span>POSTS / DAY · <b>~30</b></span>
         </div>
       </div>
-      <article class="account">
+      <article class="account" data-account="pao.e.mar">
         <div class="acc-top">
           <div class="handle"><span class="at">@</span>pao.e.mar</div>
           <span class="lang">PT</span>
         </div>
         <div class="niche">Rio lifestyle &mdash; beach, sun, slow rhythm.</div>
         <div class="acc-stats">
-          <div class="s"><span class="v">6.9K</span><span class="k">views · 30d</span></div>
-          <div class="s"><span class="v">+40</span><span class="k">followers · 30d</span></div>
+          <div class="s"><span class="v" data-field="views">6.9K</span><span class="k">views · 30d</span></div>
+          <div class="s"><span class="v" data-field="followers-delta">+40</span><span class="k">followers · 30d</span></div>
           <svg class="sparkline" viewBox="0 0 80 24" fill="none"><polyline points="0,22 10,21 20,21 30,20 40,18 50,16 60,14 70,12 80,10" stroke="#ef6f5e" stroke-width="1.4" fill="none"/></svg>
         </div>
       </article>
-      <article class="account">
+      <article class="account" data-account="nehochu_neznau">
         <div class="acc-top">
           <div class="handle"><span class="at">@</span>nehochu_neznau</div>
           <span class="lang">RU</span>
         </div>
         <div class="niche">Late-twenties drift, in observations.</div>
         <div class="acc-stats">
-          <div class="s"><span class="v">3.2K</span><span class="k">views · 30d</span></div>
-          <div class="s"><span class="v">+2</span><span class="k">followers · 30d</span></div>
+          <div class="s"><span class="v" data-field="views">3.2K</span><span class="k">views · 30d</span></div>
+          <div class="s"><span class="v" data-field="followers-delta">+2</span><span class="k">followers · 30d</span></div>
           <svg class="sparkline" viewBox="0 0 80 24" fill="none"><polyline points="0,21 10,20 20,20 30,19 40,18 50,16 60,12 70,9  80,5" stroke="#ef6f5e" stroke-width="1.4" fill="none"/></svg>
         </div>
       </article>
-      <article class="account">
+      <article class="account" data-account="trick.trend">
         <div class="acc-top">
           <div class="handle"><span class="at">@</span>trick.trend</div>
           <span class="lang">EN</span>
         </div>
         <div class="niche">Fashion &amp; culture micro-takes.</div>
         <div class="acc-stats">
-          <div class="s"><span class="v">673</span><span class="k">views · 30d</span></div>
-          <div class="s"><span class="v">+2</span><span class="k">followers · 30d</span></div>
+          <div class="s"><span class="v" data-field="views">673</span><span class="k">views · 30d</span></div>
+          <div class="s"><span class="v" data-field="followers-delta">+2</span><span class="k">followers · 30d</span></div>
           <svg class="sparkline" viewBox="0 0 80 24" fill="none"><polyline points="0,21 10,20 20,20 30,19 40,18 50,16 60,12 70,9  80,5" stroke="#ef6f5e" stroke-width="1.4" fill="none"/></svg>
         </div>
       </article>
@@ -1427,19 +1427,19 @@ _HTML = """<!doctype html>
           </div>
         </div>
         <div class="meta">
-          <span>VIEWS / 30D · <b>20,011</b></span>
+          <span>VIEWS / 30D · <b data-stat="pv-chiara">20,011</b></span>
           <span>POSTS / DAY · <b>~10</b></span>
         </div>
       </div>
-      <article class="account">
+      <article class="account" data-account="work.with.karimi">
         <div class="acc-top">
           <div class="handle"><span class="at">@</span>work.with.karimi</div>
           <span class="lang">EN</span>
         </div>
         <div class="niche">Careers and work in Europe — advice, war stories.</div>
         <div class="acc-stats">
-          <div class="s"><span class="v">20.0K</span><span class="k">views · 30d</span></div>
-          <div class="s"><span class="v">+9</span><span class="k">followers · 30d</span></div>
+          <div class="s"><span class="v" data-field="views">20.0K</span><span class="k">views · 30d</span></div>
+          <div class="s"><span class="v" data-field="followers-delta">+9</span><span class="k">followers · 30d</span></div>
           <svg class="sparkline" viewBox="0 0 80 24" fill="none"><polyline points="0,22 10,21 20,21 30,20 40,18 50,16 60,14 70,12 80,10" stroke="#ef6f5e" stroke-width="1.4" fill="none"/></svg>
         </div>
       </article>
@@ -1963,6 +1963,74 @@ _HTML = """<!doctype html>
   chatInput.onkeydown = function(e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
   };
+}());
+</script>
+
+<script>
+(function() {
+  function fmt(n) {
+    if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\\.0$/, '') + 'M';
+    if (n >= 1000)    return (n / 1000).toFixed(1).replace(/\\.0$/, '') + 'K';
+    return String(n);
+  }
+  function fmtComma(n) { return n.toLocaleString('en-US'); }
+  function fmtDelta(n) { return (n >= 0 ? '+' : '') + fmt(Math.abs(n)); }
+  function set(stat, val) {
+    var el = document.querySelector('[data-stat="' + stat + '"]');
+    if (el) el.textContent = String(val);
+  }
+
+  fetch('/landing-stats')
+    .then(function(r) { return r.json(); })
+    .then(function(json) {
+      if (!json.ok) return;
+      var d = json.data;
+      var s = d.summary;
+
+      set('pill-accounts', s.accounts_count);
+      set('pill-views', fmt(s.views_30d));
+
+      set('kpi-views', fmt(s.views_30d));
+      set('kpi-accounts-inline', s.accounts_count);
+      set('kpi-posts', fmt(s.posts_30d));
+      set('kpi-accounts', s.accounts_count);
+      set('kpi-operators', s.operators_count);
+
+      set('dash-views', fmtComma(s.views_30d));
+      set('dash-accounts', s.accounts_count);
+      set('dash-accounts-2', s.accounts_count);
+      set('dash-replies', fmtComma(s.replies_30d));
+      set('dash-followers', fmtDelta(s.followers_delta_30d));
+
+      var pv = d.participant_views;
+      Object.keys(pv).forEach(function(p) { set('pv-' + p, fmtComma(pv[p])); });
+
+      var accMap = {};
+      d.accounts.forEach(function(a) { accMap[a.account_id] = a; });
+      document.querySelectorAll('[data-account]').forEach(function(el) {
+        var acc = accMap[el.getAttribute('data-account')];
+        if (!acc) return;
+        var vEl = el.querySelector('[data-field="views"]');
+        var fEl = el.querySelector('[data-field="followers-delta"]');
+        if (vEl) vEl.textContent = fmt(acc.views_30d);
+        if (fEl) fEl.textContent = fmtDelta(acc.followers_delta_30d);
+      });
+
+      var top5 = d.accounts.slice(0, 5);
+      var bars = document.getElementById('top-accounts-bars');
+      if (bars && top5.length) {
+        var maxV = top5[0].views_30d || 1;
+        bars.innerHTML = top5.map(function(a) {
+          var pct = Math.round(a.views_30d / maxV * 100);
+          return '<div><div style="display:flex;justify-content:space-between">' +
+            '<span>' + a.account_id + '</span><span>' + fmt(a.views_30d) + '</span></div>' +
+            '<div style="height:6px;background:#ece9e0;border-radius:3px;overflow:hidden;margin-top:4px">' +
+            '<div style="width:' + pct + '%;height:100%;background:linear-gradient(90deg,#ef6f5e,#d85a4a)"></div>' +
+            '</div></div>';
+        }).join('');
+      }
+    })
+    .catch(function() {});
 }());
 </script>
 </body>

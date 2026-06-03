@@ -119,6 +119,68 @@ def compare(days: int = Query(7, ge=1)):
     return {"ok": True, "data": [dict(zip(keys, r)) for r in rows]}
 
 
+@router.get("/landing-stats")
+def landing_stats():
+    acc_rows = query_analytics("""
+        SELECT
+            account_id,
+            participant,
+            COALESCE(SUM(views),   0)                   AS views_30d,
+            COALESCE(SUM(replies), 0)                   AS replies_30d,
+            MAX(followers_count) - MIN(followers_count) AS followers_delta,
+            MAX(followers_count)                        AS followers_current
+        FROM account_insights
+        WHERE date >= CURRENT_DATE - INTERVAL '30' DAY
+        GROUP BY account_id, participant
+        ORDER BY SUM(views) DESC
+    """)
+    posts_row = query_analytics("""
+        SELECT COUNT(*) FROM posts
+        WHERE status = 'posted'
+          AND posted_at >= CURRENT_TIMESTAMP - INTERVAL '30' DAY
+    """)
+
+    total_views = 0
+    total_replies = 0
+    total_followers_delta = 0
+    operators: set[str] = set()
+    participant_views: dict[str, int] = {}
+    accounts = []
+
+    for r in acc_rows:
+        acc_id, participant = r[0], r[1]
+        views, replies, delta, current = int(r[2]), int(r[3]), int(r[4]), int(r[5])
+        total_views += views
+        total_replies += replies
+        total_followers_delta += delta
+        operators.add(participant)
+        participant_views[participant] = participant_views.get(participant, 0) + views
+        accounts.append({
+            "account_id": acc_id,
+            "participant": participant,
+            "views_30d": views,
+            "replies_30d": replies,
+            "followers_delta_30d": delta,
+            "followers_count": current,
+        })
+
+    return {
+        "ok": True,
+        "data": {
+            "summary": {
+                "views_30d": total_views,
+                "posts_30d": int(posts_row[0][0]) if posts_row else 0,
+                "replies_30d": total_replies,
+                "followers_delta_30d": total_followers_delta,
+                "accounts_count": len(accounts),
+                "operators_count": len(operators),
+            },
+            "accounts": accounts,
+            "participant_views": participant_views,
+        },
+    }
+
+
 @router.get("/queue-stats")
 def queue_stats():
     result: dict[str, dict] = {}
